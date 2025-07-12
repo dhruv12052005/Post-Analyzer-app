@@ -2,14 +2,17 @@ import { Request, Response } from 'express';
 import { PostModel, CreatePostRequest, UpdatePostRequest } from '../models/Post';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { AnalysisService } from '../services/analysisService';
+import { EnhancedAnalysisService } from '../services/enhancedAnalysisService';
 
 export class PostController {
   private postModel: PostModel;
   private analysisService: AnalysisService;
+  private enhancedAnalysisService: EnhancedAnalysisService;
 
   constructor(postModel: PostModel) {
     this.postModel = postModel;
     this.analysisService = new AnalysisService();
+    this.enhancedAnalysisService = new EnhancedAnalysisService();
   }
 
   // Get all posts with pagination
@@ -147,7 +150,7 @@ export class PostController {
     }
   }
 
-  // Analyze a post using C++ service
+  // Enhanced analysis using both C++ and ML services
   async analyzePost(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);
@@ -160,7 +163,7 @@ export class PostController {
         });
       }
 
-      const analysis = await this.analysisService.analyzeText(post.body, post.id);
+      const analysis = await this.enhancedAnalysisService.analyzeText(post.body, post.id);
 
       res.json({
         success: true,
@@ -175,7 +178,7 @@ export class PostController {
     }
   }
 
-  // Analyze text directly using C++ service
+  // Analyze text directly using enhanced analysis
   async analyzeText(req: Request, res: Response) {
     try {
       const { text } = req.body;
@@ -187,7 +190,7 @@ export class PostController {
         });
       }
 
-      const analysis = await this.analysisService.analyzeText(text);
+      const analysis = await this.enhancedAnalysisService.analyzeText(text);
 
       res.json({
         success: true,
@@ -215,7 +218,7 @@ export class PostController {
         });
       }
 
-      const history = await this.analysisService.getAnalysisHistory(id);
+      const history = await this.enhancedAnalysisService.getAnalysisHistory(id);
 
       res.json({
         success: true,
@@ -243,16 +246,16 @@ export class PostController {
       console.error('Error fetching analysis stats:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to fetch analysis statistics'
+        message: 'Failed to fetch analysis stats'
       });
     }
   }
 
-  // Sync posts from mock API
+  // Sync posts from external API
   async syncPosts(req: AuthenticatedRequest, res: Response) {
     try {
       await this.postModel.syncFromMockApi();
-
+      
       res.json({
         success: true,
         message: 'Posts synced successfully'

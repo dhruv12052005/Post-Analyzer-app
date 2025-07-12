@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Save, X, BarChart3, Clock, Hash, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Edit, Save, X, BarChart3, Clock, Hash, TrendingUp, Brain, Zap, Target, Activity } from 'lucide-react';
 import { backendApi } from '@/lib/api';
-import { Post, PostAnalysis } from '@/types';
+import { Post, EnhancedAnalysisResult } from '@/types';
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -16,7 +16,7 @@ export default function PostDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
-  const [analysis, setAnalysis] = useState<PostAnalysis | null>(null);
+  const [analysis, setAnalysis] = useState<EnhancedAnalysisResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function PostDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
@@ -169,88 +169,205 @@ export default function PostDetailPage() {
           </div>
         </div>
 
-        {/* Analysis Section */}
+        {/* Enhanced Analysis Section */}
         <div className="bg-white rounded-lg shadow-md p-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Post Analysis</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Enhanced Post Analysis</h2>
             <button
               onClick={analyzePost}
               disabled={analyzing}
               className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
             >
-              <BarChart3 size={16} className="mr-2" />
+              <Brain size={16} className="mr-2" />
               {analyzing ? 'Analyzing...' : 'Analyze Post'}
             </button>
           </div>
 
           {analysis && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <Hash className="text-blue-600 mr-2" size={20} />
-                    <div>
-                      <p className="text-sm text-blue-600 font-medium">Word Count</p>
-                      <p className="text-2xl font-bold text-blue-900">{analysis.wordCount}</p>
+              {/* Combined Sentiment */}
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Combined Sentiment Analysis</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-200">
+                    <div className="flex items-center mb-2">
+                      <Brain className="text-blue-600 mr-2" size={20} />
+                      <span className="text-sm font-medium text-blue-600">Sentiment</span>
                     </div>
+                    <p className="text-3xl font-bold text-blue-900 capitalize">{analysis.combinedSentiment.label}</p>
+                    <p className="text-sm text-blue-700">
+                      Score: {analysis.combinedSentiment.score !== null && analysis.combinedSentiment.score !== undefined 
+                        ? `${analysis.combinedSentiment.score > 0 ? '+' : ''}${analysis.combinedSentiment.score.toFixed(3)}`
+                        : 'N/A'
+                      }
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Confidence: {analysis.combinedSentiment.confidence !== null && analysis.combinedSentiment.confidence !== undefined
+                        ? `${(analysis.combinedSentiment.confidence * 100).toFixed(1)}%`
+                        : 'N/A'
+                      }
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
+                    <div className="flex items-center mb-2">
+                      <Target className="text-green-600 mr-2" size={20} />
+                      <span className="text-sm font-medium text-green-600">Category</span>
+                    </div>
+                    <p className="text-3xl font-bold text-green-900 capitalize">{analysis.textInsights.category}</p>
+                    <p className="text-sm text-green-700">
+                      Complexity: {analysis.textInsights.complexity}
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      Readability: {analysis.textInsights.readability}
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
+                    <div className="flex items-center mb-2">
+                      <Activity className="text-purple-600 mr-2" size={20} />
+                      <span className="text-sm font-medium text-purple-600">Processing</span>
+                    </div>
+                    <p className="text-3xl font-bold text-purple-900">{analysis.processingTime.total}ms</p>
+                    <p className="text-sm text-purple-700">
+                      C++: {analysis.processingTime.cpp}ms | ML: {analysis.processingTime.ml}ms
+                    </p>
+                    <p className="text-xs text-purple-600 mt-1">
+                      {analysis.analysisQuality.fallbackUsed ? 'Fallback used' : 'All services available'}
+                    </p>
                   </div>
                 </div>
+              </div>
 
-                <div className="bg-green-50 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <TrendingUp className="text-green-600 mr-2" size={20} />
-                    <div>
-                      <p className="text-sm text-green-600 font-medium">Keywords</p>
-                      <p className="text-2xl font-bold text-green-900">{analysis.keywordCount}</p>
+              {/* Service Comparison */}
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Analysis Services Comparison</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* C++ Analysis */}
+                  <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                    <div className="flex items-center mb-4">
+                      <Zap className="text-blue-600 mr-2" size={20} />
+                      <h4 className="text-lg font-semibold text-blue-900">C++ Analysis</h4>
+                      <div className={`ml-auto px-2 py-1 rounded-full text-xs ${
+                        analysis.analysisQuality.cppAvailable 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {analysis.analysisQuality.cppAvailable ? 'Available' : 'Fallback'}
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-blue-700">Word Count:</span>
+                        <span className="font-medium">{analysis.cppAnalysis.wordCount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-blue-700">Keywords:</span>
+                        <span className="font-medium">{analysis.cppAnalysis.keywordCount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-blue-700">Sentiment:</span>
+                        <span className="font-medium">
+                          {analysis.cppAnalysis.sentimentScore !== null && analysis.cppAnalysis.sentimentScore !== undefined
+                            ? `${analysis.cppAnalysis.sentimentScore > 0 ? '+' : ''}${analysis.cppAnalysis.sentimentScore.toFixed(3)}`
+                            : 'N/A'
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-blue-700">Reading Time:</span>
+                        <span className="font-medium">{analysis.cppAnalysis.readingTime} min</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="bg-yellow-50 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <BarChart3 className="text-yellow-600 mr-2" size={20} />
-                    <div>
-                      <p className="text-sm text-yellow-600 font-medium">Sentiment</p>
-                      <p className="text-2xl font-bold text-yellow-900">
-                        {analysis.sentimentScore > 0 ? '+' : ''}{analysis.sentimentScore.toFixed(2)}
-                      </p>
+                  {/* ML Analysis */}
+                  <div className="bg-green-50 rounded-lg p-6 border border-green-200">
+                    <div className="flex items-center mb-4">
+                      <Brain className="text-green-600 mr-2" size={20} />
+                      <h4 className="text-lg font-semibold text-green-900">ML Analysis</h4>
+                      <div className={`ml-auto px-2 py-1 rounded-full text-xs ${
+                        analysis.analysisQuality.mlAvailable 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {analysis.analysisQuality.mlAvailable ? 'Available' : 'Fallback'}
+                      </div>
                     </div>
-                  </div>
-                </div>
-
-                <div className="bg-purple-50 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <Clock className="text-purple-600 mr-2" size={20} />
-                    <div>
-                      <p className="text-sm text-purple-600 font-medium">Reading Time</p>
-                      <p className="text-2xl font-bold text-purple-900">{analysis.readingTime} min</p>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-green-700">Sentiment:</span>
+                        <span className="font-medium capitalize">{analysis.mlAnalysis.sentiment_label}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-green-700">Subjectivity:</span>
+                        <span className="font-medium">
+                          {analysis.mlAnalysis.subjectivity_score !== null && analysis.mlAnalysis.subjectivity_score !== undefined
+                            ? `${(analysis.mlAnalysis.subjectivity_score * 100).toFixed(1)}%`
+                            : 'N/A'
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-green-700">Category:</span>
+                        <span className="font-medium capitalize">{analysis.mlAnalysis.text_category}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-green-700">Complexity:</span>
+                        <span className="font-medium">
+                          {analysis.mlAnalysis.complexity_score !== null && analysis.mlAnalysis.complexity_score !== undefined
+                            ? `${(analysis.mlAnalysis.complexity_score * 100).toFixed(1)}%`
+                            : 'N/A'
+                          }
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {analysis.keywords && analysis.keywords.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">Top Keywords</h3>
+              {/* Key Topics */}
+              {analysis.textInsights.keyTopics && analysis.textInsights.keyTopics.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Key Topics & Phrases</h3>
                   <div className="flex flex-wrap gap-2">
-                    {analysis.keywords.map((keyword, index) => (
+                    {analysis.textInsights.keyTopics.map((topic, index) => (
                       <span
                         key={index}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                        className="px-3 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 rounded-full text-sm font-medium border border-purple-200"
                       >
-                        {keyword}
+                        {topic}
                       </span>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Service Status */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Service Status</h3>
+                <div className="flex space-x-4 text-sm">
+                  <div className="flex items-center">
+                    <div className={`w-2 h-2 rounded-full mr-2 ${
+                      analysis.analysisQuality.cppAvailable ? 'bg-green-500' : 'bg-red-500'
+                    }`}></div>
+                    <span>C++ Service: {analysis.analysisQuality.cppAvailable ? 'Online' : 'Offline'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className={`w-2 h-2 rounded-full mr-2 ${
+                      analysis.analysisQuality.mlAvailable ? 'bg-green-500' : 'bg-red-500'
+                    }`}></div>
+                    <span>ML Service: {analysis.analysisQuality.mlAvailable ? 'Online' : 'Offline'}</span>
+                  </div>
+                </div>
+              </div>
             </>
           )}
 
           {!analysis && !analyzing && (
             <div className="text-center py-8">
-              <BarChart3 className="text-gray-400 mx-auto mb-4" size={48} />
-              <p className="text-gray-600">Click "Analyze Post" to see detailed analysis</p>
+              <Brain className="text-gray-400 mx-auto mb-4" size={48} />
+              <p className="text-gray-600">Click "Analyze Post" to see enhanced analysis with C++ and ML insights</p>
             </div>
           )}
         </div>

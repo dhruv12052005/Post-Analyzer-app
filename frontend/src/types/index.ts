@@ -5,6 +5,53 @@ export interface Post {
   userId: number;
 }
 
+export interface CppAnalysisResult {
+  wordCount: number;
+  keywordCount: number;
+  sentimentScore: number;
+  keywords: string[];
+  readingTime: number;
+}
+
+export interface MlAnalysisResult {
+  sentiment_score: number;
+  sentiment_label: string;
+  subjectivity_score: number;
+  text_category: string;
+  category_confidence: number;
+  key_phrases: string[];
+  word_count: number;
+  reading_time_minutes: number;
+  complexity_score: number;
+}
+
+export interface EnhancedAnalysisResult {
+  cppAnalysis: CppAnalysisResult;
+  mlAnalysis: MlAnalysisResult;
+  combinedSentiment: {
+    score: number;
+    label: string;
+    confidence: number;
+  };
+  textInsights: {
+    category: string;
+    complexity: string;
+    readability: string;
+    keyTopics: string[];
+  };
+  processingTime: {
+    cpp: number;
+    ml: number;
+    total: number;
+  };
+  analysisQuality: {
+    cppAvailable: boolean;
+    mlAvailable: boolean;
+    fallbackUsed: boolean;
+  };
+}
+
+// Keep the old interface for backward compatibility
 export interface PostAnalysis {
   wordCount: number;
   keywordCount: number;

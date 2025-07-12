@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Post, CreatePostRequest, UpdatePostRequest, PostAnalysis, PaginatedResponse } from '@/types';
+import { Post, CreatePostRequest, UpdatePostRequest, PostAnalysis, EnhancedAnalysisResult, PaginatedResponse } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 const MOCK_API_URL = 'https://jsonplaceholder.typicode.com';
@@ -98,12 +98,12 @@ export const backendApi = {
     return response.data.data;
   },
 
-  async analyzePost(id: number): Promise<PostAnalysis> {
+  async analyzePost(id: number): Promise<EnhancedAnalysisResult> {
     const response = await apiClient.get(`/posts/${id}/analyze`);
     return response.data.data;
   },
 
-  async analyzeText(text: string): Promise<PostAnalysis> {
+  async analyzeText(text: string): Promise<EnhancedAnalysisResult> {
     const response = await apiClient.post('/analyze', { text });
     return response.data.data;
   },

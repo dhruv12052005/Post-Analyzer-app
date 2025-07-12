@@ -27,7 +27,9 @@ private:
     std::map<std::string, double> positiveWords = {
         {"good", 1.0}, {"great", 1.5}, {"excellent", 2.0}, {"amazing", 2.0}, {"wonderful", 1.8},
         {"love", 1.5}, {"like", 1.0}, {"enjoy", 1.2}, {"happy", 1.3}, {"beautiful", 1.4},
-        {"perfect", 2.0}, {"fantastic", 1.8}, {"brilliant", 1.7}, {"outstanding", 1.6}
+        {"perfect", 2.0}, {"fantastic", 1.8}, {"brilliant", 1.7}, {"outstanding", 1.6},
+        {"cool", 1.2}, {"positive", 1.5}, {"awesome", 1.8}, {"superb", 1.7}, {"terrific", 1.6},
+        {"delightful", 1.4}, {"pleased", 1.3}, {"satisfied", 1.2}, {"thrilled", 1.6}, {"excited", 1.4}
     };
 
     std::map<std::string, double> negativeWords = {
