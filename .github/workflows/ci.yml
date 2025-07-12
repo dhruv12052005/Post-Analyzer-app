@@ -1,0 +1,178 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Frontend Tests and Build
+  frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install Frontend Dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Run Frontend Tests
+      working-directory: ./frontend
+      run: npm test --if-present
+    
+    - name: Build Frontend
+      working-directory: ./frontend
+      run: npm run build
+    
+    - name: Upload Frontend Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/.next
+
+  # Backend Tests and Build
+  backend:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: post_analyzer_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+    
+    - name: Install Backend Dependencies
+      working-directory: ./backend
+      run: npm ci
+    
+    - name: Run Backend Tests
+      working-directory: ./backend
+      run: npm test --if-present
+      env:
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_NAME: post_analyzer_test
+        DB_USER: postgres
+        DB_PASSWORD: password
+    
+    - name: Build Backend
+      working-directory: ./backend
+      run: npm run build
+    
+    - name: Upload Backend Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-build
+        path: backend/dist
+
+  # C++ Build and Test
+  cpp:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install C++ Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake
+    
+    - name: Build C++ Analyzer
+      working-directory: ./backend/cpp
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+        make
+    
+    - name: Test C++ Analyzer
+      working-directory: ./backend/cpp/build
+      run: ./analyzer_test
+
+  # Docker Build and Test
+  docker:
+    runs-on: ubuntu-latest
+    needs: [frontend, backend, cpp]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download Frontend Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/.next
+    
+    - name: Download Backend Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: backend-build
+        path: backend/dist
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build and Test Docker Images
+      run: |
+        docker-compose build
+        docker-compose up -d postgres
+        sleep 10
+        docker-compose up -d backend
+        sleep 5
+        docker-compose up -d frontend
+        sleep 10
+        
+        # Test the application
+        curl -f http://localhost:3000 || exit 1
+        curl -f http://localhost:3001/health || exit 1
+        
+        docker-compose down
+
+  # Deploy to Production (only on main branch)
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [frontend, backend, cpp, docker]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: ./frontend
+    
+    - name: Deploy Backend to Railway
+      uses: railway/deploy@v1
+      with:
+        railway_token: ${{ secrets.RAILWAY_TOKEN }}
+        service: post-analyzer-backend 
