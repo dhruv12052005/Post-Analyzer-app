@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import { initializeDatabase, closeDatabase } from './utils/database';
+import { initializeDatabase, closeDatabase, getDatabase } from './utils/database';
 import { PostModel } from './models/Post';
 import { PostController } from './controllers/postController';
 import { createPostRoutes } from './routes/posts';
@@ -36,6 +36,13 @@ app.get('/health', (req: Request, res: Response) => {
 async function initializeApp() {
   try {
     await initializeDatabase();
+    
+    // Ensure production API key exists in database
+    const database = await getDatabase();
+    await database.exec(`
+      INSERT OR IGNORE INTO api_keys (key_hash, description) VALUES 
+      ('production-api-key-2e7cugpu3evggdd1r9alz', 'Production API key')
+    `);
     
     const postModel = new PostModel();
     const postController = new PostController(postModel);
