@@ -4,13 +4,13 @@ set -e
 echo "Starting C++ Analysis Service..."
 
 # Make sure the executable exists
-if [ ! -f "cpp_analyzer_server" ]; then
-    echo "Error: cpp_analyzer_server executable not found. Building..."
-    g++ -o cpp_analyzer_server cpp_analyzer_server.cpp -std=c++17 -O2
+if [ ! -f "post_analyzer_rest" ]; then
+    echo "Error: post_analyzer_rest executable not found. Building..."
+    g++ -o post_analyzer_rest rest_api.cpp -std=c++17 -O2
 fi
 
 # Set port from environment variable or default to 8000
 PORT=${PORT:-8000}
 
 echo "Starting service on port $PORT..."
-./cpp_analyzer_server 
+./post_analyzer_rest 
