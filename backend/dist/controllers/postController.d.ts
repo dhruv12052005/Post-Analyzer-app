@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 export declare class PostController {
     private postModel;
     private analysisService;
+    private enhancedAnalysisService;
     constructor(postModel: PostModel);
     getPosts(req: Request, res: Response): Promise<void>;
     getPost(req: Request, res: Response): Promise<Response<any, Record<string, any>> | undefined>;

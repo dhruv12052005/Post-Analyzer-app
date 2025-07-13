@@ -2,10 +2,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostController = void 0;
 const analysisService_1 = require("../services/analysisService");
+const enhancedAnalysisService_1 = require("../services/enhancedAnalysisService");
 class PostController {
     constructor(postModel) {
         this.postModel = postModel;
         this.analysisService = new analysisService_1.AnalysisService();
+        this.enhancedAnalysisService = new enhancedAnalysisService_1.EnhancedAnalysisService();
     }
     // Get all posts with pagination
     async getPosts(req, res) {
@@ -130,7 +132,7 @@ class PostController {
             });
         }
     }
-    // Analyze a post using C++ service
+    // Enhanced analysis using both C++ and ML services
     async analyzePost(req, res) {
         try {
             const id = parseInt(req.params.id);
@@ -141,7 +143,7 @@ class PostController {
                     message: 'Post not found'
                 });
             }
-            const analysis = await this.analysisService.analyzeText(post.body, post.id);
+            const analysis = await this.enhancedAnalysisService.analyzeText(post.body, post.id);
             res.json({
                 success: true,
                 data: analysis
@@ -155,7 +157,7 @@ class PostController {
             });
         }
     }
-    // Analyze text directly using C++ service
+    // Analyze text directly using enhanced analysis
     async analyzeText(req, res) {
         try {
             const { text } = req.body;
@@ -165,7 +167,7 @@ class PostController {
                     message: 'Text is required'
                 });
             }
-            const analysis = await this.analysisService.analyzeText(text);
+            const analysis = await this.enhancedAnalysisService.analyzeText(text);
             res.json({
                 success: true,
                 data: analysis
@@ -190,7 +192,7 @@ class PostController {
                     message: 'Post not found'
                 });
             }
-            const history = await this.analysisService.getAnalysisHistory(id);
+            const history = await this.enhancedAnalysisService.getAnalysisHistory(id);
             res.json({
                 success: true,
                 data: history
@@ -217,11 +219,11 @@ class PostController {
             console.error('Error fetching analysis stats:', error);
             res.status(500).json({
                 success: false,
-                message: 'Failed to fetch analysis statistics'
+                message: 'Failed to fetch analysis stats'
             });
         }
     }
-    // Sync posts from mock API
+    // Sync posts from external API
     async syncPosts(req, res) {
         try {
             await this.postModel.syncFromMockApi();

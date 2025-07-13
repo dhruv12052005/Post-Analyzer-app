@@ -1,6 +1,6 @@
-# Post Analyzer - Advanced C++ Text Analysis Application
+# Post Analyzer - Multi-Service Text Analysis Application
 
-A full-stack web application that analyzes posts using C++ backend logic, MySQL database, and high-performance text analysis. Built with Next.js, Express.js, and C++ REST API service.
+A full-stack web application that analyzes posts using multiple backend services. Built with Next.js frontend, Express.js backend, C++ analysis service, and Python ML service.
 
 ## 🚀 Features
 
@@ -15,9 +15,9 @@ A full-stack web application that analyzes posts using C++ backend logic, MySQL 
 
 ### Backend (Node.js + Express)
 - **RESTful API**: Complete CRUD operations for posts
-- **API Key Protection**: Secure endpoints with API key authentication
-- **Database Integration**: MySQL with connection pooling
-- **C++ Integration**: High-performance C++ analysis service
+- **API Key Protection**: Secure endpoints with database-based API key authentication
+- **SQLite Database**: Lightweight database for development and production
+- **Multi-Service Integration**: Communicates with C++ and ML services
 - **Error Handling**: Comprehensive error handling and logging
 - **Analysis Logging**: Database logging of all analysis operations
 
@@ -28,14 +28,13 @@ A full-stack web application that analyzes posts using C++ backend logic, MySQL 
 - **Sentiment Analysis**: Advanced sentiment scoring based on word dictionaries
 - **Reading Time**: Estimated reading time calculation
 - **REST API**: HTTP endpoints for easy integration
-- **Fallback Support**: JavaScript fallback when C++ service is unavailable
 
-### Database (MySQL)
-- **Post Storage**: Structured post data with timestamps
-- **Analysis Logs**: Comprehensive tracking of analysis operations
-- **Performance Metrics**: Processing time and analysis statistics
-- **Data Sync**: Automatic sync with mock API data
-- **Connection Pooling**: Efficient database connections
+### ML Service (Python/FastAPI)
+- **Advanced Analysis**: Machine learning-based text analysis
+- **Sentiment Analysis**: Enhanced sentiment scoring
+- **Keyword Extraction**: ML-powered keyword identification
+- **FastAPI**: High-performance Python web framework
+- **REST API**: HTTP endpoints for integration
 
 ## 🏗️ Architecture
 
@@ -46,18 +45,17 @@ A full-stack web application that analyzes posts using C++ backend logic, MySQL 
 │                 │    │                 │    │                 │
 │ • React         │    │ • REST API      │    │ • Text Analysis │
 │ • TypeScript    │    │ • Auth Middleware│   │ • Keyword Ext.  │
-│ • Tailwind CSS  │    │ • Analysis Log  │    │ • Sentiment     │
+│ • Tailwind CSS  │    │ • SQLite DB     │    │ • Sentiment     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                 │
                                 ▼
                        ┌─────────────────┐
-                       │   MySQL         │
-                       │   Database      │
+                       │   ML Service    │
+                       │   (Python)      │
                        │                 │
-                       │ • Posts Table   │
-                       │ • Analysis Logs │
-                       │ • Users Table   │
-                       │ • API Keys      │
+                       │ • FastAPI       │
+                       │ • ML Analysis   │
+                       │ • Sentiment     │
                        └─────────────────┘
 ```
 
@@ -74,35 +72,34 @@ A full-stack web application that analyzes posts using C++ backend logic, MySQL 
 - **Node.js**: JavaScript runtime
 - **Express.js**: Web framework
 - **TypeScript**: Type-safe backend development
-- **MySQL**: Primary database
-- **mysql2**: MySQL client with connection pooling
+- **SQLite**: Lightweight database
+- **sqlite3**: SQLite client
 - **Helmet**: Security middleware
 - **CORS**: Cross-origin resource sharing
 
-### C++ Integration
+### C++ Service
 - **C++17**: Modern C++ features
 - **CMake**: Build system
 - **httplib**: HTTP server library
 - **nlohmann/json**: JSON parsing
 - **REST API**: HTTP endpoints for integration
 
-### DevOps
-- **Docker**: Containerization
-- **Docker Compose**: Multi-service orchestration
-- **GitHub Actions**: CI/CD pipeline
-- **Vercel**: Frontend deployment
-- **Railway**: Backend deployment
+### ML Service
+- **Python 3.11**: Python runtime
+- **FastAPI**: High-performance web framework
+- **Uvicorn**: ASGI server
+- **Machine Learning**: Text analysis libraries
+- **REST API**: HTTP endpoints for integration
 
 ## 📦 Installation
 
 ### Prerequisites
 - Node.js 18+
-- MySQL 8.0+
-- Docker & Docker Compose (optional)
+- Python 3.11+
 - CMake 3.10+ (for C++ compilation)
 - C++ Compiler (GCC 7+ or Clang 6+)
 
-### Quick Start with Docker
+### Quick Start
 
 1. **Clone the repository**
    ```bash
@@ -110,67 +107,40 @@ A full-stack web application that analyzes posts using C++ backend logic, MySQL 
    cd post-analyzer-app
    ```
 
-2. **Set environment variables**
-   ```bash
-   cp backend/.env.example backend/.env
-   # Edit backend/.env with your configuration
-   ```
-
-3. **Start with Docker Compose**
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
-   - C++ Service: http://localhost:8000
-   - Database: localhost:3306
-
-### Manual Installation
-
-1. **Setup Database**
-   ```bash
-   # Install MySQL
-   # Create database and user
-   mysql -u root -p
-   CREATE DATABASE post_analyzer;
-   CREATE USER 'post_analyzer'@'localhost' IDENTIFIED BY 'password';
-   GRANT ALL PRIVILEGES ON post_analyzer.* TO 'post_analyzer'@'localhost';
-   FLUSH PRIVILEGES;
-   EXIT;
-   
-   # Run database setup
-   ./scripts/setup-database.sh
-   ```
-
-2. **Build C++ Service**
-   ```bash
-   cd backend/cpp
-   ./build.sh
-   ```
-
-3. **Setup Backend**
+2. **Setup Backend**
    ```bash
    cd backend
    npm install
-   cp .env.example .env
-   # Edit .env with your database credentials
-   npm run dev
+   npm run build
+   npm start
    ```
 
-4. **Setup Frontend**
+3. **Setup C++ Service**
+   ```bash
+   cd backend/cpp
+   ./build.sh
+   ./post_analyzer_rest
+   ```
+
+4. **Setup ML Service**
+   ```bash
+   cd backend/ml
+   pip install -r requirements.txt
+   python ml_service.py
+   ```
+
+5. **Setup Frontend**
    ```bash
    cd frontend
    npm install
    npm run dev
    ```
 
-5. **Start C++ Service**
-   ```bash
-   cd backend/cpp
-   ./post_analyzer_rest
-   ```
+6. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:3001
+   - C++ Service: http://localhost:8000
+   - ML Service: http://localhost:8001
 
 ## 🔧 Configuration
 
@@ -182,15 +152,13 @@ A full-stack web application that analyzes posts using C++ backend logic, MySQL 
 PORT=3001
 NODE_ENV=development
 
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=post_analyzer
-DB_USER=post_analyzer
-DB_PASSWORD=password
+# Database Configuration (SQLite)
+DB_TYPE=sqlite
+DB_PATH=./post_analyzer.db
 
-# C++ Service Configuration
+# Service URLs
 CPP_SERVICE_URL=http://localhost:8000
+ML_SERVICE_URL=http://localhost:8001
 
 # API Configuration
 API_KEY=your-secret-api-key-here
@@ -210,28 +178,24 @@ NEXT_PUBLIC_API_KEY=your-secret-api-key-here
 2. Set environment variables in Vercel dashboard
 3. Deploy automatically on push to main branch
 
-### Backend (Railway/Render)
-1. Connect your GitHub repository
-2. Set environment variables
-3. Deploy automatically via GitHub Actions
+### Backend Services (Railway)
+1. Deploy backend to Railway
+2. Deploy C++ service to Railway
+3. Deploy ML service to Railway
+4. Set environment variables in Railway dashboard
 
-### C++ Service
-- **Development**: Local compilation and execution
-- **Production**: Docker containerization
-- **Scaling**: Multiple instances behind load balancer
-
-### Database (MySQL)
-- **Development**: Local MySQL instance
-- **Production**: Managed MySQL service (AWS RDS, Google Cloud SQL, etc.)
+### Database (SQLite)
+- **Development**: Local SQLite file
+- **Production**: SQLite file on Railway (persistent storage)
 
 ## 📊 API Endpoints
 
 ### Posts
 - `GET /api/posts` - Get all posts with pagination
 - `GET /api/posts/:id` - Get specific post
-- `POST /api/posts` - Create new post
-- `PUT /api/posts/:id` - Update post
-- `DELETE /api/posts/:id` - Delete post
+- `POST /api/posts` - Create new post (requires API key)
+- `PUT /api/posts/:id` - Update post (requires API key)
+- `DELETE /api/posts/:id` - Delete post (requires API key)
 
 ### Analysis
 - `GET /api/posts/:id/analyze` - Analyze specific post
@@ -240,64 +204,89 @@ NEXT_PUBLIC_API_KEY=your-secret-api-key-here
 - `GET /api/posts/analysis/stats` - Get analysis statistics
 
 ### Sync
-- `POST /api/posts/sync` - Sync posts from mock API
+- `POST /api/posts/sync` - Sync posts from mock API (requires API key)
+
+## 🔐 Authentication
+
+### API Key System
+- **Database Storage**: API keys stored in SQLite database
+- **Header Authentication**: `X-API-Key` header required for protected endpoints
+- **Default Key**: `your-secret-api-key-here` (for development)
+- **Production**: Generate secure API keys for production
+
+### Protected Endpoints
+- POST `/api/posts` - Create posts
+- PUT `/api/posts/:id` - Update posts
+- DELETE `/api/posts/:id` - Delete posts
+- POST `/api/posts/sync` - Sync posts
 
 ## 🧪 Testing
 
-### Integration Testing
-```bash
-# Test C++ service integration
-cd backend/cpp
-./test_integration.sh
-```
-
 ### Manual Testing
 ```bash
-# Test C++ service
-curl -X POST http://localhost:8000/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"text": "This is a test text for analysis."}'
+# Test backend health
+curl http://localhost:3001/health
 
-# Test backend API
-curl -X POST http://localhost:3001/api/posts/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"text": "This is a test text for analysis."}'
+# Test C++ service
+curl http://localhost:8000/health
+
+# Test ML service
+curl http://localhost:8001/health
+
+# Test API with authentication
+curl -H "X-API-Key: your-secret-api-key-here" \
+     http://localhost:3001/api/posts
 ```
+
+### Service Communication
+- Frontend → Backend: HTTP API calls
+- Backend → C++ Service: HTTP API calls
+- Backend → ML Service: HTTP API calls
+- All services communicate via localhost URLs
 
 ## 📈 Performance
 
-The C++ implementation provides significant performance improvements:
+### Current Setup
+- **Frontend**: Next.js with Turbopack for fast development
+- **Backend**: Express.js with SQLite for simplicity
+- **C++ Service**: High-performance text analysis
+- **ML Service**: Python-based ML analysis
+- **Database**: SQLite for lightweight operation
 
-- **Speed**: 5-10x faster than JavaScript implementation
-- **Memory**: More efficient memory usage
-- **CPU**: Better CPU utilization for text processing
-- **Scalability**: Can handle high-volume text analysis
+### Scalability Considerations
+- **Database**: Can migrate to PostgreSQL for production
+- **Services**: Can deploy to cloud platforms (Railway, Render)
+- **Caching**: Can add Redis for performance
+- **Load Balancing**: Can add multiple service instances
 
-## 🔍 Monitoring
+## 🚨 Troubleshooting
 
-The application includes comprehensive monitoring:
+### Common Issues
+1. **Port Conflicts**: Ensure ports 3000, 3001, 8000, 8001 are available
+2. **API Key Issues**: Check database for valid API keys
+3. **Service Communication**: Verify all services are running
+4. **Database Issues**: Check SQLite file permissions
 
-- **Analysis Statistics**: Track C++ vs JavaScript analysis usage
-- **Processing Times**: Monitor analysis performance
-- **Service Health**: Health check endpoints for all services
-- **Database Metrics**: Connection pool and query performance
+### Debug Commands
+```bash
+# Check service status
+curl http://localhost:3001/health
+curl http://localhost:8000/health
+curl http://localhost:8001/health
 
-## 🤝 Contributing
+# Check database
+sqlite3 backend/post_analyzer.db ".tables"
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
+## 🎉 Success Checklist
 
-## 📄 License
+- [ ] All services running on their ports
+- [ ] Frontend accessible at http://localhost:3000
+- [ ] Backend API responding at http://localhost:3001
+- [ ] C++ service running at http://localhost:8000
+- [ ] ML service running at http://localhost:8001
+- [ ] API key authentication working
+- [ ] Post analysis functionality working
+- [ ] Database operations working
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-For support and questions:
-1. Check the troubleshooting section in SETUP.md
-2. Review the logs for error messages
-3. Test individual components separately
-4. Open an issue on GitHub 
+Your application is ready for development and deployment! 🚀 

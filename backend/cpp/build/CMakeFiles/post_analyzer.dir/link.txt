@@ -1,0 +1,2 @@
+/usr/bin/ar qc libpost_analyzer.a CMakeFiles/post_analyzer.dir/analyzer.cpp.o
+/usr/bin/ranlib libpost_analyzer.a
