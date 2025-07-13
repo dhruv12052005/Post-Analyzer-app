@@ -8,6 +8,6 @@ apt-get update -qq
 apt-get install -y g++ make
 
 # Compile the C++ service
-g++ -o post_analyzer_rest rest_api.cpp -std=c++17 -O2
+g++ -o post_analyzer_rest simple_http_server.cpp -std=c++17 -O2 -pthread
 
 echo "Build completed successfully!" 
