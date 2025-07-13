@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -24,7 +24,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.json({
     success: true,
     message: 'Server is running',
@@ -44,7 +44,7 @@ async function initializeApp() {
     app.use('/api/posts', createPostRoutes(postController));
     
     // 404 handler
-    app.use('*', (req, res) => {
+    app.use('*', (req: Request, res: Response) => {
       res.status(404).json({
         success: false,
         message: 'Route not found'
@@ -52,7 +52,7 @@ async function initializeApp() {
     });
     
     // Error handler
-    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    app.use((err: any, req: Request, res: Response, next: NextFunction) => {
       console.error('Error:', err);
       res.status(500).json({
         success: false,

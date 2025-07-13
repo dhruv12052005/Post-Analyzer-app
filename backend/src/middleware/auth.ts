@@ -6,6 +6,9 @@ export interface AuthenticatedRequest extends Request {
     id: string;
     apiKey: string;
   };
+  body: any;
+  params: any;
+  headers: any;
 }
 
 export const requireApiKey = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
