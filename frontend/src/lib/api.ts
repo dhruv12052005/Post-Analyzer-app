@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Post, CreatePostRequest, UpdatePostRequest, PostAnalysis, EnhancedAnalysisResult, PaginatedResponse } from '@/types';
+import { Post, CreatePostRequest, UpdatePostRequest, EnhancedAnalysisResult, PaginatedResponse } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 const MOCK_API_URL = 'https://jsonplaceholder.typicode.com';

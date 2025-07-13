@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Save, X, BarChart3, Clock, Hash, TrendingUp, Brain, Zap, Target, Activity } from 'lucide-react';
+import { ArrowLeft, Edit, Save, X, Brain, Zap, Target, Activity } from 'lucide-react';
 import { backendApi } from '@/lib/api';
 import { Post, EnhancedAnalysisResult } from '@/types';
 
@@ -19,13 +19,7 @@ export default function PostDetailPage() {
   const [analysis, setAnalysis] = useState<EnhancedAnalysisResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
 
-  useEffect(() => {
-    if (postId) {
-      fetchPost();
-    }
-  }, [postId]);
-
-  const fetchPost = async () => {
+  const fetchPost = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -39,7 +33,13 @@ export default function PostDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [postId]);
+
+  useEffect(() => {
+    if (postId) {
+      fetchPost();
+    }
+  }, [postId, fetchPost]);
 
   const handleSave = async () => {
     if (!post) return;
@@ -367,7 +367,7 @@ export default function PostDetailPage() {
           {!analysis && !analyzing && (
             <div className="text-center py-8">
               <Brain className="text-gray-400 mx-auto mb-4" size={48} />
-              <p className="text-gray-600">Click "Analyze Post" to see enhanced analysis with C++ and ML insights</p>
+              <p className="text-gray-600">Click &quot;Analyze Post&quot; to see enhanced analysis with C++ and ML insights</p>
             </div>
           )}
         </div>
