@@ -73,10 +73,18 @@ export default function HomePage() {
     console.log('Edit post:', post);
   };
 
-  const handleDeletePost = (id: number) => {
-    // For now, we'll just remove from local state
-    // In a real app, this would call the API
-    setPosts(prev => (prev || []).filter(post => post.id !== id));
+  const handleDeletePost = async (id: number) => {
+    try {
+      // Call the backend API to delete the post
+      await backendApi.deletePost(id);
+      // Remove from local state after successful deletion
+      setPosts(prev => (prev || []).filter(post => post.id !== id));
+      console.log('Post deleted successfully');
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete post';
+      alert(`Error: ${errorMessage}`);
+    }
   };
 
   if (loading && posts.length === 0) {

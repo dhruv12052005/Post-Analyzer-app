@@ -98,6 +98,10 @@ export const backendApi = {
     return response.data.data;
   },
 
+  async deletePost(id: number): Promise<void> {
+    await apiClient.delete(`/posts/${id}`);
+  },
+
   async analyzePost(id: number): Promise<EnhancedAnalysisResult> {
     const response = await apiClient.get(`/posts/${id}/analyze`);
     return response.data.data;
