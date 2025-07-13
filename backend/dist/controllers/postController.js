@@ -14,7 +14,7 @@ class PostController {
         try {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 10;
-            const { posts, total } = await this.postModel.findAll(page, limit);
+            const { posts, total } = this.postModel.findAll(page, limit);
             const totalPages = Math.ceil(total / limit);
             res.json({
                 success: true,
@@ -39,7 +39,7 @@ class PostController {
     async getPost(req, res) {
         try {
             const id = parseInt(req.params.id);
-            const post = await this.postModel.findById(id);
+            const post = this.postModel.findById(id);
             if (!post) {
                 return res.status(404).json({
                     success: false,
@@ -69,7 +69,7 @@ class PostController {
                     message: 'Title, body, and userId are required'
                 });
             }
-            const post = await this.postModel.create({ title, body, userId });
+            const post = this.postModel.create({ title, body, userId });
             res.status(201).json({
                 success: true,
                 data: post
@@ -88,7 +88,7 @@ class PostController {
         try {
             const id = parseInt(req.params.id);
             const updates = req.body;
-            const post = await this.postModel.update(id, updates);
+            const post = this.postModel.update(id, updates);
             if (!post) {
                 return res.status(404).json({
                     success: false,
@@ -112,7 +112,7 @@ class PostController {
     async deletePost(req, res) {
         try {
             const id = parseInt(req.params.id);
-            const deleted = await this.postModel.delete(id);
+            const deleted = this.postModel.delete(id);
             if (!deleted) {
                 return res.status(404).json({
                     success: false,
@@ -136,7 +136,7 @@ class PostController {
     async analyzePost(req, res) {
         try {
             const id = parseInt(req.params.id);
-            const post = await this.postModel.findById(id);
+            const post = this.postModel.findById(id);
             if (!post) {
                 return res.status(404).json({
                     success: false,
@@ -185,7 +185,7 @@ class PostController {
     async getAnalysisHistory(req, res) {
         try {
             const id = parseInt(req.params.id);
-            const post = await this.postModel.findById(id);
+            const post = this.postModel.findById(id);
             if (!post) {
                 return res.status(404).json({
                     success: false,

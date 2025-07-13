@@ -323,16 +323,16 @@ export class EnhancedAnalysisService {
 
   async logAnalysis(log: AnalysisLog): Promise<void> {
     try {
-      const database = await getDatabase();
-      await database.run(`
+      const database = getDatabase();
+      database.prepare(`
         INSERT INTO analysis_logs (post_id, analysis_type, result, processing_time_ms, created_at)
         VALUES (?, ?, ?, ?, datetime('now'))
-      `, [
+      `).run(
         log.postId,
         log.analysisType,
         JSON.stringify(log.result),
         log.processingTimeMs
-      ]);
+      );
     } catch (error) {
       console.error('Error logging analysis:', error);
     }
@@ -340,16 +340,16 @@ export class EnhancedAnalysisService {
 
   async getAnalysisHistory(postId: number): Promise<AnalysisLog[]> {
     try {
-      const database = await getDatabase();
-      const rows = await database.all(`
+      const database = getDatabase();
+      const rows = database.prepare(`
         SELECT id, post_id as postId, analysis_type as analysisType, 
                result, processing_time_ms as processingTimeMs, created_at as createdAt
         FROM analysis_logs 
         WHERE post_id = ?
         ORDER BY created_at DESC
-      `, [postId]);
+      `).all(postId);
       
-      return rows.map(row => ({
+      return rows.map((row: any) => ({
         ...row,
         result: JSON.parse(row.result)
       }));

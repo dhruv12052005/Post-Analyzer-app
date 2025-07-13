@@ -33,9 +33,9 @@ app.get('/health', (req, res) => {
     });
 });
 // Initialize database and create models/controllers
-async function initializeApp() {
+function initializeApp() {
     try {
-        await (0, database_1.initializeDatabase)();
+        (0, database_1.initializeDatabase)();
         const postModel = new Post_1.PostModel();
         const postController = new postController_1.PostController(postModel);
         // API routes
@@ -68,14 +68,14 @@ async function initializeApp() {
     }
 }
 // Handle graceful shutdown
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully');
-    await (0, database_1.closeDatabase)();
+    (0, database_1.closeDatabase)();
     process.exit(0);
 });
-process.on('SIGINT', async () => {
+process.on('SIGINT', () => {
     console.log('SIGINT received, shutting down gracefully');
-    await (0, database_1.closeDatabase)();
+    (0, database_1.closeDatabase)();
     process.exit(0);
 });
 // Start the application

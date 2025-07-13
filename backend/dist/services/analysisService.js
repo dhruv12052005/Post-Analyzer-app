@@ -85,16 +85,11 @@ class AnalysisService {
     }
     async logAnalysis(log) {
         try {
-            const database = await (0, database_1.getDatabase)();
-            await database.run(`
+            const database = (0, database_1.getDatabase)();
+            database.prepare(`
         INSERT INTO analysis_logs (post_id, analysis_type, result, processing_time_ms, created_at)
         VALUES (?, ?, ?, ?, datetime('now'))
-      `, [
-                log.postId,
-                log.analysisType,
-                JSON.stringify(log.result),
-                log.processingTimeMs
-            ]);
+      `).run(log.postId, log.analysisType, JSON.stringify(log.result), log.processingTimeMs);
         }
         catch (error) {
             console.error('Error logging analysis:', error);
@@ -103,15 +98,15 @@ class AnalysisService {
     }
     async getAnalysisHistory(postId) {
         try {
-            const database = await (0, database_1.getDatabase)();
-            const rows = await database.all(`
+            const database = (0, database_1.getDatabase)();
+            const rows = database.prepare(`
         SELECT id, post_id as postId, analysis_type as analysisType, 
                result, processing_time_ms as processingTimeMs, created_at as createdAt
         FROM analysis_logs 
         WHERE post_id = ?
         ORDER BY created_at DESC
-      `, [postId]);
-            return rows.map(row => ({
+      `).all(postId);
+            return rows.map((row) => ({
                 ...row,
                 result: JSON.parse(row.result)
             }));
@@ -123,15 +118,15 @@ class AnalysisService {
     }
     async getAnalysisStats() {
         try {
-            const database = await (0, database_1.getDatabase)();
-            const rows = await database.all(`
+            const database = (0, database_1.getDatabase)();
+            const rows = database.prepare(`
         SELECT 
           COUNT(*) as totalAnalyses,
           SUM(CASE WHEN analysis_type = 'cpp_sentiment' THEN 1 ELSE 0 END) as cppAnalyses,
           SUM(CASE WHEN analysis_type = 'js_fallback' THEN 1 ELSE 0 END) as fallbackAnalyses,
           AVG(processing_time_ms) as averageProcessingTime
         FROM analysis_logs
-      `);
+      `).all();
             const stats = rows[0];
             return {
                 totalAnalyses: stats.totalAnalyses || 0,

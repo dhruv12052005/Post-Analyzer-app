@@ -3,9 +3,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-let db: Database | null = null;
+let db: any = null;
 
-export function getDatabase(): Database {
+export function getDatabase(): any {
   if (!db) {
     db = new Database('./post_analyzer.db');
   }
