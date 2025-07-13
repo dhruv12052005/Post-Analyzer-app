@@ -33,9 +33,9 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Initialize database and create models/controllers
-async function initializeApp() {
+function initializeApp() {
   try {
-    await initializeDatabase();
+    initializeDatabase();
     
     const postModel = new PostModel();
     const postController = new PostController(postModel);
@@ -74,15 +74,15 @@ async function initializeApp() {
 }
 
 // Handle graceful shutdown
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
-  await closeDatabase();
+  closeDatabase();
   process.exit(0);
 });
 
-process.on('SIGINT', async () => {
+process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
-  await closeDatabase();
+  closeDatabase();
   process.exit(0);
 });
 

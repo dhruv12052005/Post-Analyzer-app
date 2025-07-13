@@ -21,7 +21,7 @@ export class PostController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
-      const { posts, total } = await this.postModel.findAll(page, limit);
+      const { posts, total } = this.postModel.findAll(page, limit);
       const totalPages = Math.ceil(total / limit);
 
       res.json({
@@ -47,7 +47,7 @@ export class PostController {
   async getPost(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);
-      const post = await this.postModel.findById(id);
+      const post = this.postModel.findById(id);
 
       if (!post) {
         return res.status(404).json({
@@ -81,7 +81,7 @@ export class PostController {
         });
       }
 
-      const post = await this.postModel.create({ title, body, userId });
+      const post = this.postModel.create({ title, body, userId });
 
       res.status(201).json({
         success: true,
@@ -102,7 +102,7 @@ export class PostController {
       const id = parseInt(req.params.id);
       const updates: UpdatePostRequest = req.body;
 
-      const post = await this.postModel.update(id, updates);
+      const post = this.postModel.update(id, updates);
 
       if (!post) {
         return res.status(404).json({
@@ -128,7 +128,7 @@ export class PostController {
   async deletePost(req: AuthenticatedRequest, res: Response) {
     try {
       const id = parseInt(req.params.id);
-      const deleted = await this.postModel.delete(id);
+      const deleted = this.postModel.delete(id);
 
       if (!deleted) {
         return res.status(404).json({
@@ -154,7 +154,7 @@ export class PostController {
   async analyzePost(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);
-      const post = await this.postModel.findById(id);
+      const post = this.postModel.findById(id);
 
       if (!post) {
         return res.status(404).json({
@@ -209,7 +209,7 @@ export class PostController {
   async getAnalysisHistory(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);
-      const post = await this.postModel.findById(id);
+      const post = this.postModel.findById(id);
 
       if (!post) {
         return res.status(404).json({
