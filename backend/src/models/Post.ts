@@ -21,15 +21,15 @@ export interface UpdatePostRequest {
 }
 
 export class PostModel {
-  findAll(page: number = 1, limit: number = 10): { posts: Post[]; total: number } {
+  async findAll(page: number = 1, limit: number = 10): Promise<{ posts: Post[]; total: number }> {
     const offset = (page - 1) * limit;
     
     // Get total count
-    const countResult = query('SELECT COUNT(*) as count FROM posts');
+    const countResult = await query('SELECT COUNT(*) as count FROM posts');
     const total = countResult[0]?.count || 0;
     
     // Get posts with pagination
-    const posts = query(`
+    const posts = await query(`
       SELECT id, title, body, user_id as userId, created_at as createdAt, updated_at as updatedAt
       FROM posts
       ORDER BY created_at DESC
@@ -42,8 +42,8 @@ export class PostModel {
     };
   }
 
-  findById(id: number): Post | null {
-    const posts = query(`
+  async findById(id: number): Promise<Post | null> {
+    const posts = await query(`
       SELECT id, title, body, user_id as userId, created_at as createdAt, updated_at as updatedAt
       FROM posts
       WHERE id = ?
@@ -52,18 +52,18 @@ export class PostModel {
     return posts[0] || null;
   }
 
-  create(post: CreatePostRequest): Post {
-    const database = getDatabase();
-    const result = database.prepare(`
+  async create(post: CreatePostRequest): Promise<Post> {
+    const database = await getDatabase();
+    const result = await database.run(`
       INSERT INTO posts (title, body, user_id, created_at, updated_at)
       VALUES (?, ?, ?, datetime('now'), datetime('now'))
-    `).run(post.title, post.body, post.userId);
+    `, [post.title, post.body, post.userId]);
     
-    const newId = result.lastInsertRowid as number;
-    return this.findById(newId)!;
+    const newId = result.lastID!;
+    return (await this.findById(newId))!;
   }
 
-  update(id: number, updates: UpdatePostRequest): Post | null {
+  async update(id: number, updates: UpdatePostRequest): Promise<Post | null> {
     const fields: string[] = [];
     const values: any[] = [];
     
@@ -83,20 +83,20 @@ export class PostModel {
     fields.push('updated_at = datetime(\'now\')');
     values.push(id);
     
-    const database = getDatabase();
-    database.prepare(`
+    const database = await getDatabase();
+    await database.run(`
       UPDATE posts
       SET ${fields.join(', ')}
       WHERE id = ?
-    `).run(...values);
+    `, values);
     
     return this.findById(id);
   }
 
-  delete(id: number): boolean {
-    const database = getDatabase();
-    const result = database.prepare('DELETE FROM posts WHERE id = ?').run(id);
-    return result.changes > 0;
+  async delete(id: number): Promise<boolean> {
+    const database = await getDatabase();
+    const result = await database.run('DELETE FROM posts WHERE id = ?', [id]);
+    return (result.changes || 0) > 0;
   }
 
   async syncFromMockApi(): Promise<void> {
@@ -110,9 +110,9 @@ export class PostModel {
       }>;
       
       for (const mockPost of mockPosts) {
-        const existingPost = this.findById(mockPost.id);
+        const existingPost = await this.findById(mockPost.id);
         if (!existingPost) {
-          this.create({
+          await this.create({
             title: mockPost.title,
             body: mockPost.body,
             userId: mockPost.userId

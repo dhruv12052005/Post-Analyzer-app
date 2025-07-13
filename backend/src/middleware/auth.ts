@@ -23,10 +23,11 @@ export const requireApiKey = async (req: AuthenticatedRequest, res: Response, ne
 
   try {
     // Check against database
-    const db = getDatabase();
-    const result = db.prepare(
-      'SELECT * FROM api_keys WHERE key_hash = ? AND is_active = 1'
-    ).get(apiKey);
+    const db = await getDatabase();
+    const result = await db.get(
+      'SELECT * FROM api_keys WHERE key_hash = ? AND is_active = 1',
+      [apiKey]
+    );
     
     if (!result) {
       return res.status(403).json({
@@ -36,9 +37,10 @@ export const requireApiKey = async (req: AuthenticatedRequest, res: Response, ne
     }
 
     // Update last used timestamp
-    db.prepare(
-      'UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).run(result.id);
+    await db.run(
+      'UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [result.id]
+    );
 
     // Add user info to request
     req.user = {
@@ -61,16 +63,18 @@ export const optionalApiKey = async (req: AuthenticatedRequest, res: Response, n
   
   if (apiKey) {
     try {
-      const db = getDatabase();
-      const result = db.prepare(
-        'SELECT * FROM api_keys WHERE key_hash = ? AND is_active = 1'
-      ).get(apiKey);
+      const db = await getDatabase();
+      const result = await db.get(
+        'SELECT * FROM api_keys WHERE key_hash = ? AND is_active = 1',
+        [apiKey]
+      );
       
       if (result) {
         // Update last used timestamp
-        db.prepare(
-          'UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?'
-        ).run(result.id);
+        await db.run(
+          'UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [result.id]
+        );
 
         req.user = {
           id: 'api-user',

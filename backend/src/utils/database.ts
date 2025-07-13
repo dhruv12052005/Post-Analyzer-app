@@ -1,22 +1,25 @@
-import Database from 'better-sqlite3';
+import { Database, open } from 'sqlite';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-let db: any = null;
+let db: Database | null = null;
 
-export function getDatabase(): any {
+export async function getDatabase(): Promise<Database> {
   if (!db) {
-    db = new Database('./post_analyzer.db');
+    db = await open({
+      filename: './post_analyzer.db',
+      driver: require('sqlite3').Database
+    });
   }
   return db;
 }
 
-export function initializeDatabase() {
-  const database = getDatabase();
+export async function initializeDatabase() {
+  const database = await getDatabase();
   
   // Create posts table
-  database.exec(`
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS posts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
@@ -28,7 +31,7 @@ export function initializeDatabase() {
   `);
 
   // Create analysis_logs table
-  database.exec(`
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS analysis_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       post_id INTEGER,
@@ -41,7 +44,7 @@ export function initializeDatabase() {
   `);
 
   // Create users table (for future authentication)
-  database.exec(`
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
@@ -53,7 +56,7 @@ export function initializeDatabase() {
   `);
 
   // Create api_keys table for API authentication
-  database.exec(`
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS api_keys (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       key_hash TEXT NOT NULL,
@@ -65,7 +68,7 @@ export function initializeDatabase() {
   `);
 
   // Insert default API key (for development)
-  database.exec(`
+  await database.exec(`
     INSERT OR IGNORE INTO api_keys (key_hash, description) VALUES 
     ('your-secret-api-key-here', 'Default development API key')
   `);
@@ -73,15 +76,15 @@ export function initializeDatabase() {
   console.log('SQLite database initialized successfully');
 }
 
-export function closeDatabase() {
+export async function closeDatabase() {
   if (db) {
-    db.close();
+    await db.close();
     db = null;
   }
 }
 
 // Export a simple query function for compatibility
-export function query(sql: string, params: any[] = []): any[] {
-  const database = getDatabase();
-  return database.prepare(sql).all(params);
+export async function query(sql: string, params: any[] = []): Promise<any[]> {
+  const database = await getDatabase();
+  return await database.all(sql, params);
 } 
