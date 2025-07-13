@@ -70,7 +70,7 @@ export async function initializeDatabase() {
   // Insert default API key (for development)
   await database.exec(`
     INSERT OR IGNORE INTO api_keys (key_hash, description) VALUES 
-    ('test-api-key-123', 'Default development API key')
+    ('production-api-key-2e7cugpu3evggdd1r9alz', 'Production API key')
   `);
 
   console.log('SQLite database initialized successfully');
