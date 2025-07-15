@@ -214,9 +214,6 @@ export default function PostDetailPage() {
                     <p className="text-sm text-green-700">
                       Readability: {analysis.textInsights.readability}
                     </p>
-                    <p className="text-xs text-green-600 mt-1">
-                      Readability: {analysis.textInsights.readability}
-                    </p>
                   </div>
 
                   <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
