@@ -202,10 +202,6 @@ export default function PostDetailPage() {
                       }
                     </p>
                     <p className="text-xs text-blue-600 mt-1">
-                      Confidence: {analysis.combinedSentiment.confidence !== null && analysis.combinedSentiment.confidence !== undefined
-                        ? `${(analysis.combinedSentiment.confidence * 100).toFixed(1)}%`
-                        : 'N/A'
-                      }
                     </p>
                   </div>
 
@@ -216,7 +212,7 @@ export default function PostDetailPage() {
                     </div>
                     <p className="text-3xl font-bold text-green-900 capitalize">{analysis.textInsights.category}</p>
                     <p className="text-sm text-green-700">
-                      Complexity: {analysis.textInsights.complexity}
+                      Readability: {analysis.textInsights.readability}
                     </p>
                     <p className="text-xs text-green-600 mt-1">
                       Readability: {analysis.textInsights.readability}

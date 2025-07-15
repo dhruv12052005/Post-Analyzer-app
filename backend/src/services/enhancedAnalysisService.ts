@@ -29,7 +29,6 @@ export interface EnhancedAnalysisResult {
   combinedSentiment: {
     score: number;
     label: string;
-    confidence: number;
   };
   textInsights: {
     category: string;
@@ -275,13 +274,13 @@ export class EnhancedAnalysisService {
     const cppAnalysis = cppResult || this.performCppFallbackAnalysis(text);
     const mlAnalysis = mlResult || this.performMlFallbackAnalysis(text);
 
-    // Clamp C++ sentiment score to [-1, 1] range
-    const clampedCppScore = Math.max(-1, Math.min(1, cppAnalysis.sentimentScore));
+    // Use tanh as a probability function to map C++ sentiment score to [-1, 1]
+    const probabilityCppScore = Math.tanh(cppAnalysis.sentimentScore);
 
     // Combine sentiment scores with better weighting
     const cppWeight = 0.4;
     const mlWeight = 0.6; // Give more weight to ML analysis
-    const combinedSentimentScore = (clampedCppScore * cppWeight + mlAnalysis.sentiment_score * mlWeight);
+    const combinedSentimentScore = (probabilityCppScore * cppWeight + mlAnalysis.sentiment_score * mlWeight);
     
     // More sensitive sentiment labeling
     const sentimentLabel = combinedSentimentScore > 0.05 ? 'positive' : 
@@ -300,8 +299,7 @@ export class EnhancedAnalysisService {
       mlAnalysis,
       combinedSentiment: {
         score: combinedSentimentScore,
-        label: sentimentLabel,
-        confidence: Math.abs(combinedSentimentScore) + 0.1 // Add base confidence
+        label: sentimentLabel
       },
       textInsights: {
         category: mlAnalysis.text_category,
