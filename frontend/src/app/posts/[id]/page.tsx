@@ -313,10 +313,10 @@ export default function PostDetailPage() {
                         <span className="font-medium capitalize">{analysis.mlAnalysis.text_category}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-green-700">Complexity:</span>
+                        <span className="text-sm text-green-700">Sentiment Score:</span>
                         <span className="font-medium">
-                          {analysis.mlAnalysis.complexity_score !== null && analysis.mlAnalysis.complexity_score !== undefined
-                            ? `${(analysis.mlAnalysis.complexity_score * 100).toFixed(1)}%`
+                          {analysis.mlAnalysis.sentiment_score !== null && analysis.mlAnalysis.sentiment_score !== undefined
+                            ? `${analysis.mlAnalysis.sentiment_score > 0 ? '+' : ''}${analysis.mlAnalysis.sentiment_score.toFixed(3)}`
                             : 'N/A'
                           }
                         </span>
