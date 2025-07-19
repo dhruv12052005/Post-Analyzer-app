@@ -113,9 +113,8 @@ export class EnhancedAnalysisService {
   private async performCppAnalysis(text: string): Promise<{ result: CppAnalysisResult | null; time: number; available: boolean }> {
     const startTime = Date.now();
     
-    // Validate input text
     if (!text || typeof text !== 'string') {
-      console.error(`[C++ Service] ❌ Invalid text input:`, { text, type: typeof text });
+      console.error(`[C++ Service] ❌ Invalid text input:`, { text: `"${text}"`, type: typeof text });
       throw new Error('Invalid text input for C++ analysis');
     }
     
@@ -124,105 +123,153 @@ export class EnhancedAnalysisService {
       throw new Error('Empty text input for C++ analysis');
     }
     
-    try {
-      console.log(`[C++ Service] 🔍 Attempting to call C++ service at: ${this.cppServiceUrl}/analyze`);
-      console.log(`[C++ Service] 📝 Request payload:`, { text: text.substring(0, 100) + (text.length > 100 ? '...' : '') });
-      console.log(`[C++ Service] 📏 Text length: ${text.length} characters`);
-      
-      const requestPayload = { text: text };
-      console.log(`[C++ Service] 📤 Sending request:`, JSON.stringify(requestPayload));
-      
-      const response = await axios.post(`${this.cppServiceUrl}/analyze`, requestPayload, {
-        timeout: 10000, // Increased timeout for better reliability
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'PostAnalyzer-Backend/1.0'
-        }
-      });
+    // Retry mechanism for Render's networking issues
+    const maxRetries = 3;
+    let lastError: any = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[C++ Service] 🔍 Attempt ${attempt}/${maxRetries} - Calling C++ service at: ${this.cppServiceUrl}/analyze`);
+        console.log(`[C++ Service] 📝 Request payload:`, { text: text.substring(0, 100) + (text.length > 100 ? '...' : '') });
+        console.log(`[C++ Service] 📏 Text length: ${text.length} characters`);
+        
+        const requestPayload = { text: text };
+        console.log(`[C++ Service] 📤 Sending request:`, JSON.stringify(requestPayload));
+        
+        // Create a more robust axios configuration for Render's networking
+        const axiosConfig = {
+          timeout: 15000, // Increased timeout for Render's slower networking
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'PostAnalyzer-Backend/1.0',
+            'Connection': 'close', // Force close connection to avoid pooling issues
+            'Accept': 'application/json'
+          },
+          maxRedirects: 0, // Don't follow redirects
+          validateStatus: (status: number) => status < 500, // Accept all responses < 500
+          transformRequest: [(data: any) => JSON.stringify(data)], // Ensure proper JSON serialization
+          transformResponse: [(data: string) => {
+            try {
+              return JSON.parse(data);
+            } catch (e) {
+              console.error(`[C++ Service] ⚠️ Failed to parse response:`, data);
+              throw new Error('Invalid JSON response from C++ service');
+            }
+          }]
+        };
 
-      const responseTime = Date.now() - startTime;
-      console.log(`[C++ Service] ✅ Success - Response received in ${responseTime}ms`);
-      console.log(`[C++ Service] 📊 Response data:`, response.data);
-      
-      // Validate response structure
-      const requiredFields = ['wordCount', 'keywordCount', 'sentimentScore', 'readingTime', 'keywords'];
-      const missingFields = requiredFields.filter(field => !(field in response.data));
-      
-      if (missingFields.length > 0) {
-        console.error(`[C++ Service] ⚠️ Invalid response structure - missing fields:`, missingFields);
-        console.error(`[C++ Service] 📄 Actual response:`, response.data);
-        throw new Error(`Invalid C++ service response - missing fields: ${missingFields.join(', ')}`);
+        console.log(`[C++ Service] 🔧 Using axios config:`, {
+          timeout: axiosConfig.timeout,
+          headers: axiosConfig.headers,
+          url: `${this.cppServiceUrl}/analyze`
+        });
+
+        const response = await axios.post(`${this.cppServiceUrl}/analyze`, requestPayload, axiosConfig);
+
+        const responseTime = Date.now() - startTime;
+        console.log(`[C++ Service] ✅ Success on attempt ${attempt} - Response received in ${responseTime}ms`);
+        console.log(`[C++ Service] 📊 Response data:`, response.data);
+        
+        // Validate response structure
+        const requiredFields = ['wordCount', 'keywordCount', 'sentimentScore', 'readingTime', 'keywords'];
+        const missingFields = requiredFields.filter(field => !(field in response.data));
+        
+        if (missingFields.length > 0) {
+          console.error(`[C++ Service] ⚠️ Invalid response structure - missing fields:`, missingFields);
+          console.error(`[C++ Service] 📄 Actual response:`, response.data);
+          throw new Error(`Invalid C++ service response - missing fields: ${missingFields.join(', ')}`);
+        }
+        
+        // Check for suspicious values that might indicate fallback
+        const sentimentScore = response.data.sentimentScore;
+        const wordCount = response.data.wordCount;
+        
+        if (typeof sentimentScore !== 'number' || isNaN(sentimentScore)) {
+          console.error(`[C++ Service] ⚠️ Invalid sentiment score:`, sentimentScore);
+          throw new Error('Invalid sentiment score from C++ service');
+        }
+        
+        if (typeof wordCount !== 'number' || wordCount < 0) {
+          console.error(`[C++ Service] ⚠️ Invalid word count:`, wordCount);
+          throw new Error('Invalid word count from C++ service');
+        }
+        
+        // Log detailed analysis results
+        console.log(`[C++ Service] 📈 Analysis results:`, {
+          wordCount: response.data.wordCount,
+          keywordCount: response.data.keywordCount,
+          sentimentScore: response.data.sentimentScore,
+          readingTime: response.data.readingTime,
+          keywords: response.data.keywords,
+          responseTime: responseTime,
+          attempts: attempt
+        });
+        
+        return {
+          result: response.data,
+          time: responseTime,
+          available: true
+        };
+      } catch (error) {
+        lastError = error;
+        const errorTime = Date.now() - startTime;
+        
+        console.error(`[C++ Service] ❌ Attempt ${attempt}/${maxRetries} failed after ${errorTime}ms:`, {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          code: (error as any)?.code,
+          status: (error as any)?.response?.status,
+          statusText: (error as any)?.response?.statusText
+        });
+        
+        // If this is the last attempt, don't wait
+        if (attempt < maxRetries) {
+          const retryDelay = Math.min(1000 * attempt, 3000); // Exponential backoff with max 3s
+          console.log(`[C++ Service] ⏳ Waiting ${retryDelay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
       }
-      
-      // Check for suspicious values that might indicate fallback
-      const sentimentScore = response.data.sentimentScore;
-      const wordCount = response.data.wordCount;
-      
-      if (typeof sentimentScore !== 'number' || isNaN(sentimentScore)) {
-        console.error(`[C++ Service] ⚠️ Invalid sentiment score:`, sentimentScore);
-        throw new Error('Invalid sentiment score from C++ service');
-      }
-      
-      if (typeof wordCount !== 'number' || wordCount < 0) {
-        console.error(`[C++ Service] ⚠️ Invalid word count:`, wordCount);
-        throw new Error('Invalid word count from C++ service');
-      }
-      
-      // Log detailed analysis results
-      console.log(`[C++ Service] 📈 Analysis results:`, {
-        wordCount: response.data.wordCount,
-        keywordCount: response.data.keywordCount,
-        sentimentScore: response.data.sentimentScore,
-        readingTime: response.data.readingTime,
-        keywords: response.data.keywords,
-        responseTime: responseTime
-      });
-      
-      return {
-        result: response.data,
-        time: responseTime,
-        available: true
-      };
-    } catch (error) {
-      const errorTime = Date.now() - startTime;
-      const errorDetails = {
-        url: `${this.cppServiceUrl}/analyze`,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        code: (error as any)?.code,
-        status: (error as any)?.response?.status,
-        statusText: (error as any)?.response?.statusText,
-        responseData: (error as any)?.response?.data,
-        timeout: errorTime,
-        cppServiceUrl: this.cppServiceUrl,
-        requestText: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
-        textLength: text.length,
-        textType: typeof text
-      };
-      
-      console.error(`[C++ Service] ❌ Failed after ${errorTime}ms - Error details:`, errorDetails);
-      
-      // Additional diagnostics
-      if ((error as any)?.code === 'ECONNREFUSED') {
-        console.error(`[C++ Service] 🔍 Connection refused - C++ service may not be running on ${this.cppServiceUrl}`);
-      } else if ((error as any)?.code === 'ETIMEDOUT') {
-        console.error(`[C++ Service] ⏰ Request timed out after ${errorTime}ms`);
-      } else if ((error as any)?.response?.status) {
-        console.error(`[C++ Service] 📡 HTTP ${(error as any)?.response?.status}: ${(error as any)?.response?.statusText}`);
-        console.error(`[C++ Service] 📄 Response body:`, (error as any)?.response?.data);
-      } else if (error instanceof Error) {
-        console.error(`[C++ Service] 🚨 Service error:`, error.message);
-      }
-      
-      // Return fallback analysis with availability flag
-      const fallbackResult = this.performCppFallbackAnalysis(text);
-      console.log(`[C++ Service] 🔄 Using fallback analysis:`, fallbackResult);
-      
-      return {
-        result: fallbackResult,
-        time: errorTime,
-        available: false
-      };
     }
+    
+    // All retries failed
+    const errorTime = Date.now() - startTime;
+    const errorDetails = {
+      url: `${this.cppServiceUrl}/analyze`,
+      error: lastError instanceof Error ? lastError.message : 'Unknown error',
+      code: (lastError as any)?.code,
+      status: (lastError as any)?.response?.status,
+      statusText: (lastError as any)?.response?.statusText,
+      responseData: (lastError as any)?.response?.data,
+      timeout: errorTime,
+      cppServiceUrl: this.cppServiceUrl,
+      requestText: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
+      textLength: text.length,
+      textType: typeof text,
+      attempts: maxRetries
+    };
+    
+    console.error(`[C++ Service] ❌ All ${maxRetries} attempts failed after ${errorTime}ms - Final error details:`, errorDetails);
+    
+    // Additional diagnostics
+    if ((lastError as any)?.code === 'ECONNREFUSED') {
+      console.error(`[C++ Service] 🔍 Connection refused - C++ service may not be running on ${this.cppServiceUrl}`);
+    } else if ((lastError as any)?.code === 'ETIMEDOUT') {
+      console.error(`[C++ Service] ⏰ Request timed out after ${errorTime}ms`);
+    } else if ((lastError as any)?.response?.status) {
+      console.error(`[C++ Service] 📡 HTTP ${(lastError as any)?.response?.status}: ${(lastError as any)?.response?.statusText}`);
+      console.error(`[C++ Service] 📄 Response body:`, (lastError as any)?.response?.data);
+    } else if (lastError instanceof Error) {
+      console.error(`[C++ Service] 🚨 Service error:`, lastError.message);
+    }
+    
+    // Return fallback analysis with availability flag
+    const fallbackResult = this.performCppFallbackAnalysis(text);
+    console.log(`[C++ Service] 🔄 Using fallback analysis after ${maxRetries} failed attempts:`, fallbackResult);
+    
+    return {
+      result: fallbackResult,
+      time: errorTime,
+      available: false
+    };
   }
 
   private async performMlAnalysis(text: string): Promise<{ result: MlAnalysisResult | null; time: number; available: boolean }> {
