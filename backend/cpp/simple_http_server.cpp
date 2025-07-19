@@ -14,6 +14,21 @@
 #include <arpa/inet.h>
 #include <thread>
 #include <regex>
+#include <ctime>
+#include <chrono>
+#include <iomanip> // Required for std::put_time and std::setfill/setw
+#include <errno.h> // Required for errno
+
+// Enhanced logging function
+void logMessage(const std::string& level, const std::string& message) {
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+    
+    std::cout << "[" << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S") 
+              << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+              << "[" << level << "] " << message << std::endl;
+}
 
 class PostAnalyzer {
 private:
@@ -156,48 +171,70 @@ private:
     bool running;
 
 public:
-    SimpleHTTPServer() : running(false) {}
+    SimpleHTTPServer() : running(false) {
+        logMessage("INFO", "C++ Analysis Service initialized");
+    }
 
     bool start(int port = 8000) {
+        logMessage("INFO", "Starting C++ Analysis Service...");
+        logMessage("INFO", "Attempting to create socket...");
+        
         serverSocket = socket(AF_INET, SOCK_STREAM, 0);
         if (serverSocket < 0) {
-            std::cerr << "Failed to create socket" << std::endl;
+            logMessage("ERROR", "Failed to create socket: " + std::string(strerror(errno)));
             return false;
         }
+        logMessage("INFO", "Socket created successfully");
 
         int opt = 1;
-        setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+        if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+            logMessage("WARN", "Failed to set SO_REUSEADDR: " + std::string(strerror(errno)));
+        }
 
         struct sockaddr_in serverAddr;
         serverAddr.sin_family = AF_INET;
         serverAddr.sin_addr.s_addr = INADDR_ANY;
         serverAddr.sin_port = htons(port);
 
+        logMessage("INFO", "Attempting to bind to port " + std::to_string(port));
         if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-            std::cerr << "Failed to bind socket" << std::endl;
+            logMessage("ERROR", "Failed to bind socket to port " + std::to_string(port) + ": " + std::string(strerror(errno)));
+            close(serverSocket);
             return false;
         }
+        logMessage("INFO", "Successfully bound to port " + std::to_string(port));
 
+        logMessage("INFO", "Attempting to listen for connections...");
         if (listen(serverSocket, 5) < 0) {
-            std::cerr << "Failed to listen" << std::endl;
+            logMessage("ERROR", "Failed to listen: " + std::string(strerror(errno)));
+            close(serverSocket);
             return false;
         }
 
         running = true;
-        std::cout << "C++ Analysis Service running on port " << port << std::endl;
+        logMessage("INFO", "C++ Analysis Service is now running and listening on port " + std::to_string(port));
+        logMessage("INFO", "Available endpoints:");
+        logMessage("INFO", "  - GET /health (health check)");
+        logMessage("INFO", "  - POST /analyze (text analysis)");
         
         while (running) {
             struct sockaddr_in clientAddr;
             socklen_t clientLen = sizeof(clientAddr);
+            
+            logMessage("DEBUG", "Waiting for client connection...");
             int clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientLen);
             
             if (clientSocket < 0) {
-                std::cerr << "Failed to accept connection" << std::endl;
+                logMessage("ERROR", "Failed to accept connection: " + std::string(strerror(errno)));
                 continue;
             }
 
-            std::thread([this, clientSocket]() {
-                handleClient(clientSocket);
+            char clientIP[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &clientAddr.sin_addr, clientIP, INET_ADDRSTRLEN);
+            logMessage("INFO", "New connection accepted from " + std::string(clientIP) + ":" + std::to_string(ntohs(clientAddr.sin_port)));
+
+            std::thread([this, clientSocket, clientIP]() {
+                handleClient(clientSocket, clientIP);
             }).detach();
         }
 
@@ -205,27 +242,35 @@ public:
     }
 
     void stop() {
+        logMessage("INFO", "Stopping C++ Analysis Service...");
         running = false;
         close(serverSocket);
+        logMessage("INFO", "C++ Analysis Service stopped");
     }
 
 private:
-    void handleClient(int clientSocket) {
+    void handleClient(int clientSocket, const std::string& clientIP) {
         char buffer[4096];
+        logMessage("DEBUG", "Handling request from " + clientIP);
+        
         int bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
         
         if (bytesRead <= 0) {
+            logMessage("WARN", "No data received from " + clientIP + ", closing connection");
             close(clientSocket);
             return;
         }
 
         buffer[bytesRead] = '\0';
         std::string request(buffer);
+        
+        logMessage("DEBUG", "Received request from " + clientIP + " (" + std::to_string(bytesRead) + " bytes)");
 
         std::string response;
         std::string contentType = "application/json";
 
         if (request.find("GET /health") != std::string::npos) {
+            logMessage("INFO", "Health check request from " + clientIP);
             response = "HTTP/1.1 200 OK\r\n";
             response += "Content-Type: " + contentType + "\r\n";
             response += "Access-Control-Allow-Origin: *\r\n";
@@ -235,10 +280,13 @@ private:
             response += "{\"status\":\"ok\",\"service\":\"cpp-analyzer\",\"timestamp\":" + std::to_string(std::time(nullptr)) + "}";
         }
         else if (request.find("POST /analyze") != std::string::npos) {
+            logMessage("INFO", "Analysis request from " + clientIP);
+            
             // Extract JSON from request body
             size_t bodyStart = request.find("\r\n\r\n");
             if (bodyStart != std::string::npos) {
                 std::string body = request.substr(bodyStart + 4);
+                logMessage("DEBUG", "Request body length: " + std::to_string(body.length()));
                 
                 // Simple JSON parsing to extract "text" field
                 std::regex textRegex("\"text\"\\s*:\\s*\"([^\"]+)\"");
@@ -246,6 +294,7 @@ private:
                 
                 if (std::regex_search(body, match, textRegex)) {
                     std::string text = match[1];
+                    logMessage("DEBUG", "Extracted text length: " + std::to_string(text.length()));
                     
                     // Unescape common JSON characters
                     size_t pos = 0;
@@ -254,8 +303,12 @@ private:
                         pos += 1;
                     }
                     
+                    logMessage("INFO", "Performing analysis for text: \"" + text.substr(0, std::min(50UL, text.length())) + (text.length() > 50 ? "..." : "\""));
+                    
                     PostAnalyzer::AnalysisResult result = analyzer.analyze(text);
                     std::string jsonResult = analyzer.resultToJson(result);
+                    
+                    logMessage("INFO", "Analysis completed for " + clientIP + " - Word count: " + std::to_string(result.wordCount) + ", Sentiment: " + std::to_string(result.sentimentScore));
                     
                     response = "HTTP/1.1 200 OK\r\n";
                     response += "Content-Type: " + contentType + "\r\n";
@@ -265,12 +318,14 @@ private:
                     response += "\r\n";
                     response += jsonResult;
                 } else {
+                    logMessage("ERROR", "Missing text field in request from " + clientIP);
                     response = "HTTP/1.1 400 Bad Request\r\n";
                     response += "Content-Type: " + contentType + "\r\n";
                     response += "\r\n";
                     response += "{\"error\":\"Missing text field\"}";
                 }
             } else {
+                logMessage("ERROR", "Invalid request body from " + clientIP);
                 response = "HTTP/1.1 400 Bad Request\r\n";
                 response += "Content-Type: " + contentType + "\r\n";
                 response += "\r\n";
@@ -278,6 +333,7 @@ private:
             }
         }
         else if (request.find("OPTIONS") != std::string::npos) {
+            logMessage("DEBUG", "OPTIONS request from " + clientIP);
             response = "HTTP/1.1 200 OK\r\n";
             response += "Access-Control-Allow-Origin: *\r\n";
             response += "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n";
@@ -285,28 +341,47 @@ private:
             response += "\r\n";
         }
         else {
+            logMessage("WARN", "Unknown request from " + clientIP + ": " + request.substr(0, std::min(100UL, request.length())));
             response = "HTTP/1.1 404 Not Found\r\n";
             response += "Content-Type: " + contentType + "\r\n";
             response += "\r\n";
             response += "{\"error\":\"Not found\"}";
         }
 
-        send(clientSocket, response.c_str(), response.length(), 0);
+        ssize_t bytesSent = send(clientSocket, response.c_str(), response.length(), 0);
+        if (bytesSent < 0) {
+            logMessage("ERROR", "Failed to send response to " + clientIP + ": " + std::string(strerror(errno)));
+        } else {
+            logMessage("DEBUG", "Sent " + std::to_string(bytesSent) + " bytes to " + clientIP);
+        }
+        
         close(clientSocket);
+        logMessage("DEBUG", "Connection closed for " + clientIP);
     }
 };
 
 int main() {
+    logMessage("INFO", "=== C++ Analysis Service Starting ===");
+    logMessage("INFO", "Version: 1.0.0");
+    logMessage("INFO", "Build: " + std::string(__DATE__) + " " + std::string(__TIME__));
+    
     SimpleHTTPServer server;
     
-    std::cout << "Starting C++ Analysis Service..." << std::endl;
-    std::cout << "Health check: GET /health" << std::endl;
-    std::cout << "Analyze text: POST /analyze" << std::endl;
+    logMessage("INFO", "Starting C++ Analysis Service...");
+    logMessage("INFO", "Health check: GET /health");
+    logMessage("INFO", "Analyze text: POST /analyze");
     
-    if (!server.start(8000)) {
-        std::cerr << "Failed to start server" << std::endl;
+    // Try to get port from environment variable, default to 8000
+    const char* portEnv = std::getenv("CPP_SERVICE_PORT");
+    int port = portEnv ? std::atoi(portEnv) : 8000;
+    logMessage("INFO", "Using port: " + std::to_string(port));
+    
+    if (!server.start(port)) {
+        logMessage("ERROR", "Failed to start server on port " + std::to_string(port));
+        logMessage("ERROR", "Please check if port is available and you have sufficient permissions");
         return 1;
     }
 
+    logMessage("INFO", "=== C++ Analysis Service Exiting ===");
     return 0;
 } 

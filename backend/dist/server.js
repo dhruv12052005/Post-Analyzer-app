@@ -12,6 +12,7 @@ const database_1 = require("./utils/database");
 const Post_1 = require("./models/Post");
 const postController_1 = require("./controllers/postController");
 const posts_1 = require("./routes/posts");
+const axios_1 = __importDefault(require("axios")); // Added axios for health check
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
@@ -25,12 +26,60 @@ app.use((0, morgan_1.default)('combined'));
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true }));
 // Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({
-        success: true,
-        message: 'Server is running',
-        timestamp: new Date().toISOString()
-    });
+app.get('/health', async (req, res) => {
+    const healthCheck = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        services: {
+            backend: 'ok',
+            database: 'unknown',
+            ml: 'unknown',
+            cpp: 'unknown'
+        },
+        environment: {
+            nodeEnv: process.env.NODE_ENV || 'development',
+            port: process.env.PORT || 3001,
+            mlServiceUrl: process.env.ML_SERVICE_URL || 'http://localhost:8001',
+            cppServiceUrl: process.env.CPP_SERVICE_URL || 'http://localhost:8000'
+        }
+    };
+    try {
+        // Test database connection
+        const db = await (0, database_1.getDatabase)();
+        const stmt = await db.prepare('SELECT 1');
+        await stmt.get();
+        healthCheck.services.database = 'ok';
+    }
+    catch (error) {
+        healthCheck.services.database = 'error';
+        console.error('Database health check failed:', error);
+    }
+    try {
+        // Test ML service
+        const mlResponse = await axios_1.default.get(`${healthCheck.environment.mlServiceUrl}/health`, {
+            timeout: 5000
+        });
+        healthCheck.services.ml = mlResponse.status === 200 ? 'ok' : 'error';
+    }
+    catch (error) {
+        healthCheck.services.ml = 'error';
+        console.error('ML service health check failed:', error);
+    }
+    try {
+        // Test C++ service
+        const cppResponse = await axios_1.default.get(`${healthCheck.environment.cppServiceUrl}/health`, {
+            timeout: 5000
+        });
+        healthCheck.services.cpp = cppResponse.status === 200 ? 'ok' : 'error';
+    }
+    catch (error) {
+        healthCheck.services.cpp = 'error';
+        console.error('C++ service health check failed:', error);
+    }
+    // Overall status
+    const allServicesOk = Object.values(healthCheck.services).every(status => status === 'ok');
+    healthCheck.status = allServicesOk ? 'ok' : 'degraded';
+    res.json(healthCheck);
 });
 // Initialize database and create models/controllers
 async function initializeApp() {

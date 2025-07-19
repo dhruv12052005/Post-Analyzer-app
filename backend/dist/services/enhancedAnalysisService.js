@@ -42,31 +42,59 @@ class EnhancedAnalysisService {
     async performCppAnalysis(text) {
         const startTime = Date.now();
         try {
-            console.log(`[C++ Service] Attempting to call C++ service at: ${this.cppServiceUrl}/analyze`);
+            console.log(`[C++ Service] 🔍 Attempting to call C++ service at: ${this.cppServiceUrl}/analyze`);
+            console.log(`[C++ Service] 📝 Request payload:`, { text: text.substring(0, 100) + (text.length > 100 ? '...' : '') });
             const response = await axios_1.default.post(`${this.cppServiceUrl}/analyze`, {
                 text: text
             }, {
-                timeout: 5000
+                timeout: 10000, // Increased timeout for better reliability
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'PostAnalyzer-Backend/1.0'
+                }
             });
-            console.log(`[C++ Service] ✅ Success - Response received in ${Date.now() - startTime}ms:`, response.data);
+            const responseTime = Date.now() - startTime;
+            console.log(`[C++ Service] ✅ Success - Response received in ${responseTime}ms`);
+            console.log(`[C++ Service] 📊 Response data:`, {
+                wordCount: response.data.wordCount,
+                keywordCount: response.data.keywordCount,
+                sentimentScore: response.data.sentimentScore,
+                readingTime: response.data.readingTime,
+                keywords: response.data.keywords
+            });
             return {
                 result: response.data,
-                time: Date.now() - startTime,
+                time: responseTime,
                 available: true
             };
         }
         catch (error) {
-            console.error(`[C++ Service] ❌ Failed - Error details:`, {
+            const errorTime = Date.now() - startTime;
+            const errorDetails = {
                 url: `${this.cppServiceUrl}/analyze`,
                 error: error instanceof Error ? error.message : 'Unknown error',
                 code: error?.code,
                 status: error?.response?.status,
-                timeout: Date.now() - startTime
-            });
+                statusText: error?.response?.statusText,
+                responseData: error?.response?.data,
+                timeout: errorTime,
+                cppServiceUrl: this.cppServiceUrl
+            };
+            console.error(`[C++ Service] ❌ Failed after ${errorTime}ms - Error details:`, errorDetails);
+            // Additional diagnostics
+            if (error?.code === 'ECONNREFUSED') {
+                console.error(`[C++ Service] 🔍 Connection refused - C++ service may not be running on ${this.cppServiceUrl}`);
+            }
+            else if (error?.code === 'ETIMEDOUT') {
+                console.error(`[C++ Service] ⏰ Request timed out after ${errorTime}ms`);
+            }
+            else if (error?.response?.status) {
+                console.error(`[C++ Service] 📡 HTTP ${error?.response?.status}: ${error?.response?.statusText}`);
+            }
             // Return fallback analysis with availability flag
             return {
                 result: this.performCppFallbackAnalysis(text),
-                time: Date.now() - startTime,
+                time: errorTime,
                 available: false
             };
         }
