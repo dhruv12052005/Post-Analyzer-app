@@ -16,14 +16,14 @@ export interface UpdatePostRequest {
     body?: string;
 }
 export declare class PostModel {
-    findAll(page?: number, limit?: number): {
+    findAll(page?: number, limit?: number): Promise<{
         posts: Post[];
         total: number;
-    };
-    findById(id: number): Post | null;
-    create(post: CreatePostRequest): Post;
-    update(id: number, updates: UpdatePostRequest): Post | null;
-    delete(id: number): boolean;
+    }>;
+    findById(id: number): Promise<Post | null>;
+    create(post: CreatePostRequest): Promise<Post>;
+    update(id: number, updates: UpdatePostRequest): Promise<Post | null>;
+    delete(id: number): Promise<boolean>;
     syncFromMockApi(): Promise<void>;
 }
 //# sourceMappingURL=Post.d.ts.map

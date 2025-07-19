@@ -241,12 +241,12 @@ export default function PostDetailPage() {
                     <div className="flex items-center mb-4">
                       <Zap className="text-blue-600 mr-2" size={20} />
                       <h4 className="text-lg font-semibold text-blue-900">C++ Analysis</h4>
-                      <div className={`ml-auto px-2 py-1 rounded-full text-xs ${
+                      <div className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${
                         analysis.analysisQuality.cppAvailable 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-green-100 text-green-800 border border-green-200' 
+                          : 'bg-red-100 text-red-800 border border-red-200'
                       }`}>
-                        {analysis.analysisQuality.cppAvailable ? 'Available' : 'Fallback'}
+                        {analysis.analysisQuality.cppAvailable ? '✅ Available' : '⚠️ Fallback'}
                       </div>
                     </div>
                     <div className="space-y-3">
@@ -271,6 +271,11 @@ export default function PostDetailPage() {
                         <span className="text-sm text-blue-700">Reading Time:</span>
                         <span className="font-medium">{analysis.cppAnalysis.readingTime} min</span>
                       </div>
+                      {!analysis.analysisQuality.cppAvailable && (
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                          ⚠️ Using simplified analysis due to service unavailability
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -279,12 +284,12 @@ export default function PostDetailPage() {
                     <div className="flex items-center mb-4">
                       <Brain className="text-green-600 mr-2" size={20} />
                       <h4 className="text-lg font-semibold text-green-900">ML Analysis</h4>
-                      <div className={`ml-auto px-2 py-1 rounded-full text-xs ${
+                      <div className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${
                         analysis.analysisQuality.mlAvailable 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-green-100 text-green-800 border border-green-200' 
+                          : 'bg-red-100 text-red-800 border border-red-200'
                       }`}>
-                        {analysis.analysisQuality.mlAvailable ? 'Available' : 'Fallback'}
+                        {analysis.analysisQuality.mlAvailable ? '✅ Available' : '⚠️ Fallback'}
                       </div>
                     </div>
                     <div className="space-y-3">
@@ -314,6 +319,11 @@ export default function PostDetailPage() {
                           }
                         </span>
                       </div>
+                      {!analysis.analysisQuality.mlAvailable && (
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                          ⚠️ Using simplified analysis due to service unavailability
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -339,20 +349,55 @@ export default function PostDetailPage() {
               {/* Service Status */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="text-sm font-medium text-gray-900 mb-2">Service Status</h3>
-                <div className="flex space-x-4 text-sm">
-                  <div className="flex items-center">
-                    <div className={`w-2 h-2 rounded-full mr-2 ${
-                      analysis.analysisQuality.cppAvailable ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
-                    <span>C++ Service: {analysis.analysisQuality.cppAvailable ? 'Online' : 'Offline'}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div className="flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-3 ${
+                        analysis.analysisQuality.cppAvailable ? 'bg-green-500' : 'bg-red-500'
+                      }`}></div>
+                      <div>
+                        <span className="text-sm font-medium">C++ Service</span>
+                        <p className="text-xs text-gray-500">
+                          {analysis.analysisQuality.cppAvailable ? 'Online' : 'Offline - Using Fallback'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-gray-500">{analysis.processingTime.cpp}ms</span>
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <div className={`w-2 h-2 rounded-full mr-2 ${
-                      analysis.analysisQuality.mlAvailable ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
-                    <span>ML Service: {analysis.analysisQuality.mlAvailable ? 'Online' : 'Offline'}</span>
+                  
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div className="flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-3 ${
+                        analysis.analysisQuality.mlAvailable ? 'bg-green-500' : 'bg-red-500'
+                      }`}></div>
+                      <div>
+                        <span className="text-sm font-medium">ML Service</span>
+                        <p className="text-xs text-gray-500">
+                          {analysis.analysisQuality.mlAvailable ? 'Online' : 'Offline - Using Fallback'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-gray-500">{analysis.processingTime.ml}ms</span>
+                    </div>
                   </div>
                 </div>
+                
+                {analysis.analysisQuality.fallbackUsed && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-yellow-500 rounded-full mr-3"></div>
+                      <div>
+                        <span className="text-sm font-medium text-yellow-800">Fallback Analysis Active</span>
+                        <p className="text-xs text-yellow-700">
+                          Some services are unavailable. Using simplified analysis for better reliability.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}

@@ -20,8 +20,8 @@ function createPostRoutes(postController) {
     router.post('/analyze', asyncOptionalApiKey, postController.analyzeText.bind(postController));
     router.get('/analysis/stats', asyncOptionalApiKey, postController.getAnalysisStats.bind(postController));
     // Protected routes (require API key)
-    router.post('/', asyncOptionalApiKey, postController.createPost.bind(postController));
-    router.put('/:id', asyncOptionalApiKey, postController.updatePost.bind(postController));
+    router.post('/', asyncRequireApiKey, postController.createPost.bind(postController));
+    router.put('/:id', asyncRequireApiKey, postController.updatePost.bind(postController));
     router.delete('/:id', asyncRequireApiKey, postController.deletePost.bind(postController));
     router.post('/sync', asyncRequireApiKey, postController.syncPosts.bind(postController));
     return router;

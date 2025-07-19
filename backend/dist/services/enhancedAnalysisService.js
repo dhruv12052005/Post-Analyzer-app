@@ -19,13 +19,15 @@ class EnhancedAnalysisService {
             this.performMlAnalysis(text)
         ]);
         const totalTime = Date.now() - startTime;
-        // Extract results and timing
+        // Extract results, timing, and availability
         const cppResult = cppAnalysis.status === 'fulfilled' ? cppAnalysis.value.result : null;
         const cppTime = cppAnalysis.status === 'fulfilled' ? cppAnalysis.value.time : 0;
+        const cppAvailable = cppAnalysis.status === 'fulfilled' ? cppAnalysis.value.available : false;
         const mlResult = mlAnalysis.status === 'fulfilled' ? mlAnalysis.value.result : null;
         const mlTime = mlAnalysis.status === 'fulfilled' ? mlAnalysis.value.time : 0;
+        const mlAvailable = mlAnalysis.status === 'fulfilled' ? mlAnalysis.value.available : false;
         // Create enhanced result
-        const enhancedResult = this.combineAnalyses(cppResult, mlResult, cppTime, mlTime, totalTime, text);
+        const enhancedResult = this.combineAnalyses(cppResult, mlResult, cppTime, mlTime, totalTime, cppAvailable, mlAvailable, text);
         // Log the analysis
         if (postId) {
             await this.logAnalysis({
@@ -40,48 +42,64 @@ class EnhancedAnalysisService {
     async performCppAnalysis(text) {
         const startTime = Date.now();
         try {
-            console.log('Calling C++ service at:', `${this.cppServiceUrl}/analyze`);
+            console.log(`[C++ Service] Attempting to call C++ service at: ${this.cppServiceUrl}/analyze`);
             const response = await axios_1.default.post(`${this.cppServiceUrl}/analyze`, {
                 text: text
             }, {
                 timeout: 5000
             });
-            console.log('C++ service response:', response.data);
+            console.log(`[C++ Service] ✅ Success - Response received in ${Date.now() - startTime}ms:`, response.data);
             return {
                 result: response.data,
-                time: Date.now() - startTime
+                time: Date.now() - startTime,
+                available: true
             };
         }
         catch (error) {
-            console.error('C++ analysis failed:', error);
-            // Return fallback analysis
+            console.error(`[C++ Service] ❌ Failed - Error details:`, {
+                url: `${this.cppServiceUrl}/analyze`,
+                error: error instanceof Error ? error.message : 'Unknown error',
+                code: error?.code,
+                status: error?.response?.status,
+                timeout: Date.now() - startTime
+            });
+            // Return fallback analysis with availability flag
             return {
                 result: this.performCppFallbackAnalysis(text),
-                time: Date.now() - startTime
+                time: Date.now() - startTime,
+                available: false
             };
         }
     }
     async performMlAnalysis(text) {
         const startTime = Date.now();
         try {
-            console.log('Calling ML service at:', `${this.mlServiceUrl}/analyze`);
+            console.log(`[ML Service] Attempting to call ML service at: ${this.mlServiceUrl}/analyze`);
             const response = await axios_1.default.post(`${this.mlServiceUrl}/analyze`, {
                 text: text
             }, {
                 timeout: 5000
             });
-            console.log('ML service response:', response.data);
+            console.log(`[ML Service] ✅ Success - Response received in ${Date.now() - startTime}ms:`, response.data);
             return {
                 result: response.data,
-                time: Date.now() - startTime
+                time: Date.now() - startTime,
+                available: true
             };
         }
         catch (error) {
-            console.error('ML analysis failed:', error);
-            // Return fallback analysis
+            console.error(`[ML Service] ❌ Failed - Error details:`, {
+                url: `${this.mlServiceUrl}/analyze`,
+                error: error instanceof Error ? error.message : 'Unknown error',
+                code: error?.code,
+                status: error?.response?.status,
+                timeout: Date.now() - startTime
+            });
+            // Return fallback analysis with availability flag
             return {
                 result: this.performMlFallbackAnalysis(text),
-                time: Date.now() - startTime
+                time: Date.now() - startTime,
+                available: false
             };
         }
     }
@@ -172,16 +190,22 @@ class EnhancedAnalysisService {
             reading_time_minutes: words.length / 200.0
         };
     }
-    combineAnalyses(cppResult, mlResult, cppTime, mlTime, totalTime, text = '') {
+    combineAnalyses(cppResult, mlResult, cppTime, mlTime, totalTime, cppAvailable, mlAvailable, text = '') {
         // Use fallback if either service is unavailable
         const cppAnalysis = cppResult || this.performCppFallbackAnalysis(text);
         const mlAnalysis = mlResult || this.performMlFallbackAnalysis(text);
-        // Clamp C++ sentiment score to [-1, 1] range
-        const clampedCppScore = Math.max(-1, Math.min(1, cppAnalysis.sentimentScore));
+        // Enhanced service availability detection
+        const cppAvailableOverall = cppAvailable;
+        const mlAvailableOverall = mlAvailable;
+        const fallbackUsed = !cppAvailableOverall || !mlAvailableOverall;
+        // Log service status
+        console.log(`[Service Status] C++: ${cppAvailableOverall ? '✅ Available' : '❌ Unavailable'}, ML: ${mlAvailableOverall ? '✅ Available' : '❌ Unavailable'}, Fallback: ${fallbackUsed ? '⚠️ Used' : '✅ Not needed'}`);
+        // Use tanh as a probability function to map C++ sentiment score to [-1, 1]
+        const probabilityCppScore = Math.tanh(cppAnalysis.sentimentScore);
         // Combine sentiment scores with better weighting
         const cppWeight = 0.4;
         const mlWeight = 0.6; // Give more weight to ML analysis
-        const combinedSentimentScore = (clampedCppScore * cppWeight + mlAnalysis.sentiment_score * mlWeight);
+        const combinedSentimentScore = (probabilityCppScore * cppWeight + mlAnalysis.sentiment_score * mlWeight);
         // More sensitive sentiment labeling
         const sentimentLabel = combinedSentimentScore > 0.05 ? 'positive' :
             combinedSentimentScore < -0.05 ? 'negative' : 'neutral';
@@ -196,8 +220,7 @@ class EnhancedAnalysisService {
             mlAnalysis,
             combinedSentiment: {
                 score: combinedSentimentScore,
-                label: sentimentLabel,
-                confidence: Math.abs(combinedSentimentScore) + 0.1 // Add base confidence
+                label: sentimentLabel
             },
             textInsights: {
                 category: mlAnalysis.text_category,
@@ -210,19 +233,24 @@ class EnhancedAnalysisService {
                 total: totalTime
             },
             analysisQuality: {
-                cppAvailable: cppResult !== null,
-                mlAvailable: mlResult !== null,
-                fallbackUsed: cppResult === null || mlResult === null
+                cppAvailable: cppAvailableOverall,
+                mlAvailable: mlAvailableOverall,
+                fallbackUsed
             }
         };
     }
     async logAnalysis(log) {
         try {
-            const database = (0, database_1.getDatabase)();
-            database.prepare(`
+            const database = await (0, database_1.getDatabase)();
+            await database.run(`
         INSERT INTO analysis_logs (post_id, analysis_type, result, processing_time_ms, created_at)
         VALUES (?, ?, ?, ?, datetime('now'))
-      `).run(log.postId, log.analysisType, JSON.stringify(log.result), log.processingTimeMs);
+      `, [
+                log.postId,
+                log.analysisType,
+                JSON.stringify(log.result),
+                log.processingTimeMs
+            ]);
         }
         catch (error) {
             console.error('Error logging analysis:', error);
@@ -230,14 +258,14 @@ class EnhancedAnalysisService {
     }
     async getAnalysisHistory(postId) {
         try {
-            const database = (0, database_1.getDatabase)();
-            const rows = database.prepare(`
+            const database = await (0, database_1.getDatabase)();
+            const rows = await database.all(`
         SELECT id, post_id as postId, analysis_type as analysisType, 
                result, processing_time_ms as processingTimeMs, created_at as createdAt
         FROM analysis_logs 
         WHERE post_id = ?
         ORDER BY created_at DESC
-      `).all(postId);
+      `, [postId]);
             return rows.map((row) => ({
                 ...row,
                 result: JSON.parse(row.result)

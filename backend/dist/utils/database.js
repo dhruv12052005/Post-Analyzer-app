@@ -7,20 +7,23 @@ exports.getDatabase = getDatabase;
 exports.initializeDatabase = initializeDatabase;
 exports.closeDatabase = closeDatabase;
 exports.query = query;
-const better_sqlite3_1 = __importDefault(require("better-sqlite3"));
+const sqlite_1 = require("sqlite");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 let db = null;
-function getDatabase() {
+async function getDatabase() {
     if (!db) {
-        db = new better_sqlite3_1.default('./post_analyzer.db');
+        db = await (0, sqlite_1.open)({
+            filename: './post_analyzer.db',
+            driver: require('sqlite3').Database
+        });
     }
     return db;
 }
-function initializeDatabase() {
-    const database = getDatabase();
+async function initializeDatabase() {
+    const database = await getDatabase();
     // Create posts table
-    database.exec(`
+    await database.exec(`
     CREATE TABLE IF NOT EXISTS posts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
@@ -31,7 +34,7 @@ function initializeDatabase() {
     )
   `);
     // Create analysis_logs table
-    database.exec(`
+    await database.exec(`
     CREATE TABLE IF NOT EXISTS analysis_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       post_id INTEGER,
@@ -43,7 +46,7 @@ function initializeDatabase() {
     )
   `);
     // Create users table (for future authentication)
-    database.exec(`
+    await database.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
@@ -54,7 +57,7 @@ function initializeDatabase() {
     )
   `);
     // Create api_keys table for API authentication
-    database.exec(`
+    await database.exec(`
     CREATE TABLE IF NOT EXISTS api_keys (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       key_hash TEXT NOT NULL,
@@ -65,21 +68,21 @@ function initializeDatabase() {
     )
   `);
     // Insert default API key (for development)
-    database.exec(`
+    await database.exec(`
     INSERT OR IGNORE INTO api_keys (key_hash, description) VALUES 
-    ('your-secret-api-key-here', 'Default development API key')
+    ('production-api-key-2e7cugpu3evggdd1r9alz', 'Production API key')
   `);
     console.log('SQLite database initialized successfully');
 }
-function closeDatabase() {
+async function closeDatabase() {
     if (db) {
-        db.close();
+        await db.close();
         db = null;
     }
 }
 // Export a simple query function for compatibility
-function query(sql, params = []) {
-    const database = getDatabase();
-    return database.prepare(sql).all(params);
+async function query(sql, params = []) {
+    const database = await getDatabase();
+    return await database.all(sql, params);
 }
 //# sourceMappingURL=database.js.map

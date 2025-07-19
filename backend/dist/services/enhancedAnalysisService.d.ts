@@ -21,7 +21,6 @@ export interface EnhancedAnalysisResult {
     combinedSentiment: {
         score: number;
         label: string;
-        confidence: number;
     };
     textInsights: {
         category: string;

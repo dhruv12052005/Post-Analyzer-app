@@ -76,12 +76,14 @@ export class EnhancedAnalysisService {
 
     const totalTime = Date.now() - startTime;
     
-    // Extract results and timing
+    // Extract results, timing, and availability
     const cppResult = cppAnalysis.status === 'fulfilled' ? cppAnalysis.value.result : null;
     const cppTime = cppAnalysis.status === 'fulfilled' ? cppAnalysis.value.time : 0;
+    const cppAvailable = cppAnalysis.status === 'fulfilled' ? cppAnalysis.value.available : false;
     
     const mlResult = mlAnalysis.status === 'fulfilled' ? mlAnalysis.value.result : null;
     const mlTime = mlAnalysis.status === 'fulfilled' ? mlAnalysis.value.time : 0;
+    const mlAvailable = mlAnalysis.status === 'fulfilled' ? mlAnalysis.value.available : false;
 
     // Create enhanced result
     const enhancedResult = this.combineAnalyses(
@@ -90,6 +92,8 @@ export class EnhancedAnalysisService {
       cppTime,
       mlTime,
       totalTime,
+      cppAvailable,
+      mlAvailable,
       text
     );
 
@@ -106,54 +110,70 @@ export class EnhancedAnalysisService {
     return enhancedResult;
   }
 
-  private async performCppAnalysis(text: string): Promise<{ result: CppAnalysisResult; time: number }> {
+  private async performCppAnalysis(text: string): Promise<{ result: CppAnalysisResult | null; time: number; available: boolean }> {
     const startTime = Date.now();
     
     try {
-      console.log('Calling C++ service at:', `${this.cppServiceUrl}/analyze`);
+      console.log(`[C++ Service] Attempting to call C++ service at: ${this.cppServiceUrl}/analyze`);
       const response = await axios.post(`${this.cppServiceUrl}/analyze`, {
         text: text
       }, {
         timeout: 5000
       });
 
-      console.log('C++ service response:', response.data);
+      console.log(`[C++ Service] ✅ Success - Response received in ${Date.now() - startTime}ms:`, response.data);
       return {
         result: response.data,
-        time: Date.now() - startTime
+        time: Date.now() - startTime,
+        available: true
       };
     } catch (error) {
-      console.error('C++ analysis failed:', error);
-      // Return fallback analysis
+      console.error(`[C++ Service] ❌ Failed - Error details:`, {
+        url: `${this.cppServiceUrl}/analyze`,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        code: (error as any)?.code,
+        status: (error as any)?.response?.status,
+        timeout: Date.now() - startTime
+      });
+      // Return fallback analysis with availability flag
       return {
         result: this.performCppFallbackAnalysis(text),
-        time: Date.now() - startTime
+        time: Date.now() - startTime,
+        available: false
       };
     }
   }
 
-  private async performMlAnalysis(text: string): Promise<{ result: MlAnalysisResult; time: number }> {
+  private async performMlAnalysis(text: string): Promise<{ result: MlAnalysisResult | null; time: number; available: boolean }> {
     const startTime = Date.now();
     
     try {
-      console.log('Calling ML service at:', `${this.mlServiceUrl}/analyze`);
+      console.log(`[ML Service] Attempting to call ML service at: ${this.mlServiceUrl}/analyze`);
       const response = await axios.post(`${this.mlServiceUrl}/analyze`, {
         text: text
       }, {
         timeout: 5000
       });
 
-      console.log('ML service response:', response.data);
+      console.log(`[ML Service] ✅ Success - Response received in ${Date.now() - startTime}ms:`, response.data);
       return {
         result: response.data,
-        time: Date.now() - startTime
+        time: Date.now() - startTime,
+        available: true
       };
     } catch (error) {
-      console.error('ML analysis failed:', error);
-      // Return fallback analysis
+      console.error(`[ML Service] ❌ Failed - Error details:`, {
+        url: `${this.mlServiceUrl}/analyze`,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        code: (error as any)?.code,
+        status: (error as any)?.response?.status,
+        timeout: Date.now() - startTime
+      });
+      // Return fallback analysis with availability flag
       return {
         result: this.performMlFallbackAnalysis(text),
-        time: Date.now() - startTime
+        time: Date.now() - startTime,
+        available: false
       };
     }
   }
@@ -268,11 +288,21 @@ export class EnhancedAnalysisService {
     cppTime: number,
     mlTime: number,
     totalTime: number,
+    cppAvailable: boolean,
+    mlAvailable: boolean,
     text: string = ''
   ): EnhancedAnalysisResult {
     // Use fallback if either service is unavailable
     const cppAnalysis = cppResult || this.performCppFallbackAnalysis(text);
     const mlAnalysis = mlResult || this.performMlFallbackAnalysis(text);
+
+    // Enhanced service availability detection
+    const cppAvailableOverall = cppAvailable;
+    const mlAvailableOverall = mlAvailable;
+    const fallbackUsed = !cppAvailableOverall || !mlAvailableOverall;
+
+    // Log service status
+    console.log(`[Service Status] C++: ${cppAvailableOverall ? '✅ Available' : '❌ Unavailable'}, ML: ${mlAvailableOverall ? '✅ Available' : '❌ Unavailable'}, Fallback: ${fallbackUsed ? '⚠️ Used' : '✅ Not needed'}`);
 
     // Use tanh as a probability function to map C++ sentiment score to [-1, 1]
     const probabilityCppScore = Math.tanh(cppAnalysis.sentimentScore);
@@ -312,9 +342,9 @@ export class EnhancedAnalysisService {
         total: totalTime
       },
       analysisQuality: {
-        cppAvailable: cppResult !== null,
-        mlAvailable: mlResult !== null,
-        fallbackUsed: cppResult === null || mlResult === null
+        cppAvailable: cppAvailableOverall,
+        mlAvailable: mlAvailableOverall,
+        fallbackUsed
       }
     };
   }
