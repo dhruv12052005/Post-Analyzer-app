@@ -41,9 +41,19 @@ class EnhancedAnalysisService {
     }
     async performCppAnalysis(text) {
         const startTime = Date.now();
+        // Validate input text
+        if (!text || typeof text !== 'string') {
+            console.error(`[C++ Service] ❌ Invalid text input:`, { text, type: typeof text });
+            throw new Error('Invalid text input for C++ analysis');
+        }
+        if (text.trim().length === 0) {
+            console.error(`[C++ Service] ❌ Empty text input:`, { text: `"${text}"`, length: text.length });
+            throw new Error('Empty text input for C++ analysis');
+        }
         try {
             console.log(`[C++ Service] 🔍 Attempting to call C++ service at: ${this.cppServiceUrl}/analyze`);
             console.log(`[C++ Service] 📝 Request payload:`, { text: text.substring(0, 100) + (text.length > 100 ? '...' : '') });
+            console.log(`[C++ Service] 📏 Text length: ${text.length} characters`);
             const requestPayload = { text: text };
             console.log(`[C++ Service] 📤 Sending request:`, JSON.stringify(requestPayload));
             const response = await axios_1.default.post(`${this.cppServiceUrl}/analyze`, requestPayload, {
@@ -101,7 +111,9 @@ class EnhancedAnalysisService {
                 responseData: error?.response?.data,
                 timeout: errorTime,
                 cppServiceUrl: this.cppServiceUrl,
-                requestText: text.substring(0, 200) + (text.length > 200 ? '...' : '')
+                requestText: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
+                textLength: text.length,
+                textType: typeof text
             };
             console.error(`[C++ Service] ❌ Failed after ${errorTime}ms - Error details:`, errorDetails);
             // Additional diagnostics

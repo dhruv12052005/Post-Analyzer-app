@@ -160,13 +160,38 @@ class PostController {
     // Analyze text directly using enhanced analysis
     async analyzeText(req, res) {
         try {
+            console.log(`[PostController] 📥 Received analyze request:`, {
+                body: req.body,
+                contentType: req.get('Content-Type'),
+                contentLength: req.get('Content-Length')
+            });
             const { text } = req.body;
+            // Enhanced validation
             if (!text) {
+                console.error(`[PostController] ❌ Missing text in request body:`, req.body);
                 return res.status(400).json({
                     success: false,
                     message: 'Text is required'
                 });
             }
+            if (typeof text !== 'string') {
+                console.error(`[PostController] ❌ Invalid text type:`, { text, type: typeof text });
+                return res.status(400).json({
+                    success: false,
+                    message: 'Text must be a string'
+                });
+            }
+            if (text.trim().length === 0) {
+                console.error(`[PostController] ❌ Empty text after trimming:`, { text: `"${text}"`, length: text.length });
+                return res.status(400).json({
+                    success: false,
+                    message: 'Text cannot be empty'
+                });
+            }
+            console.log(`[PostController] ✅ Valid text received:`, {
+                textLength: text.length,
+                textPreview: text.substring(0, 100) + (text.length > 100 ? '...' : '')
+            });
             const analysis = await this.enhancedAnalysisService.analyzeText(text);
             res.json({
                 success: true,
