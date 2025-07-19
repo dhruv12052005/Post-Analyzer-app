@@ -271,13 +271,33 @@ private:
 
         if (request.find("GET /health") != std::string::npos) {
             logMessage("INFO", "Health check request from " + clientIP);
+            
+            // Create detailed health response
+            std::string healthJson = "{";
+            healthJson += "\"status\":\"ok\",";
+            healthJson += "\"service\":\"cpp-analyzer\",";
+            healthJson += "\"version\":\"1.0.0\",";
+            healthJson += "\"timestamp\":" + std::to_string(std::time(nullptr)) + ",";
+            healthJson += "\"uptime\":\"running\",";
+            healthJson += "\"endpoints\":{";
+            healthJson += "\"health\":\"GET /health\",";
+            healthJson += "\"analyze\":\"POST /analyze\"";
+            healthJson += "},";
+            healthJson += "\"capabilities\":{";
+            healthJson += "\"sentiment_analysis\":true,";
+            healthJson += "\"keyword_extraction\":true,";
+            healthJson += "\"word_counting\":true,";
+            healthJson += "\"reading_time\":true";
+            healthJson += "}";
+            healthJson += "}";
+            
             response = "HTTP/1.1 200 OK\r\n";
             response += "Content-Type: " + contentType + "\r\n";
             response += "Access-Control-Allow-Origin: *\r\n";
             response += "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n";
             response += "Access-Control-Allow-Headers: Content-Type\r\n";
             response += "\r\n";
-            response += "{\"status\":\"ok\",\"service\":\"cpp-analyzer\",\"timestamp\":" + std::to_string(std::time(nullptr)) + "}";
+            response += healthJson;
         }
         else if (request.find("POST /analyze") != std::string::npos) {
             logMessage("INFO", "Analysis request from " + clientIP);
@@ -287,6 +307,7 @@ private:
             if (bodyStart != std::string::npos) {
                 std::string body = request.substr(bodyStart + 4);
                 logMessage("DEBUG", "Request body length: " + std::to_string(body.length()));
+                logMessage("DEBUG", "Raw request body: " + body);
                 
                 // Simple JSON parsing to extract "text" field
                 std::regex textRegex("\"text\"\\s*:\\s*\"([^\"]+)\"");
@@ -295,6 +316,7 @@ private:
                 if (std::regex_search(body, match, textRegex)) {
                     std::string text = match[1];
                     logMessage("DEBUG", "Extracted text length: " + std::to_string(text.length()));
+                    logMessage("DEBUG", "Extracted text: \"" + text + "\"");
                     
                     // Unescape common JSON characters
                     size_t pos = 0;
@@ -303,12 +325,20 @@ private:
                         pos += 1;
                     }
                     
-                    logMessage("INFO", "Performing analysis for text: \"" + text.substr(0, std::min(50UL, text.length())) + (text.length() > 50 ? "..." : "\""));
+                    // Unescape quotes
+                    pos = 0;
+                    while ((pos = text.find("\\\"", pos)) != std::string::npos) {
+                        text.replace(pos, 2, "\"");
+                        pos += 1;
+                    }
+                    
+                    logMessage("INFO", "Processing text: \"" + text.substr(0, std::min(100UL, text.length())) + (text.length() > 100 ? "..." : "\""));
                     
                     PostAnalyzer::AnalysisResult result = analyzer.analyze(text);
                     std::string jsonResult = analyzer.resultToJson(result);
                     
                     logMessage("INFO", "Analysis completed for " + clientIP + " - Word count: " + std::to_string(result.wordCount) + ", Sentiment: " + std::to_string(result.sentimentScore));
+                    logMessage("DEBUG", "Generated JSON response: " + jsonResult);
                     
                     response = "HTTP/1.1 200 OK\r\n";
                     response += "Content-Type: " + contentType + "\r\n";
@@ -319,6 +349,7 @@ private:
                     response += jsonResult;
                 } else {
                     logMessage("ERROR", "Missing text field in request from " + clientIP);
+                    logMessage("ERROR", "Failed to parse JSON body: " + body);
                     response = "HTTP/1.1 400 Bad Request\r\n";
                     response += "Content-Type: " + contentType + "\r\n";
                     response += "\r\n";
@@ -326,6 +357,7 @@ private:
                 }
             } else {
                 logMessage("ERROR", "Invalid request body from " + clientIP);
+                logMessage("ERROR", "No body separator found in request");
                 response = "HTTP/1.1 400 Bad Request\r\n";
                 response += "Content-Type: " + contentType + "\r\n";
                 response += "\r\n";

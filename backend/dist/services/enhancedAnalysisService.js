@@ -44,9 +44,9 @@ class EnhancedAnalysisService {
         try {
             console.log(`[C++ Service] 🔍 Attempting to call C++ service at: ${this.cppServiceUrl}/analyze`);
             console.log(`[C++ Service] 📝 Request payload:`, { text: text.substring(0, 100) + (text.length > 100 ? '...' : '') });
-            const response = await axios_1.default.post(`${this.cppServiceUrl}/analyze`, {
-                text: text
-            }, {
+            const requestPayload = { text: text };
+            console.log(`[C++ Service] 📤 Sending request:`, JSON.stringify(requestPayload));
+            const response = await axios_1.default.post(`${this.cppServiceUrl}/analyze`, requestPayload, {
                 timeout: 10000, // Increased timeout for better reliability
                 headers: {
                     'Content-Type': 'application/json',
@@ -55,12 +55,34 @@ class EnhancedAnalysisService {
             });
             const responseTime = Date.now() - startTime;
             console.log(`[C++ Service] ✅ Success - Response received in ${responseTime}ms`);
-            console.log(`[C++ Service] 📊 Response data:`, {
+            console.log(`[C++ Service] 📊 Response data:`, response.data);
+            // Validate response structure
+            const requiredFields = ['wordCount', 'keywordCount', 'sentimentScore', 'readingTime', 'keywords'];
+            const missingFields = requiredFields.filter(field => !(field in response.data));
+            if (missingFields.length > 0) {
+                console.error(`[C++ Service] ⚠️ Invalid response structure - missing fields:`, missingFields);
+                console.error(`[C++ Service] 📄 Actual response:`, response.data);
+                throw new Error(`Invalid C++ service response - missing fields: ${missingFields.join(', ')}`);
+            }
+            // Check for suspicious values that might indicate fallback
+            const sentimentScore = response.data.sentimentScore;
+            const wordCount = response.data.wordCount;
+            if (typeof sentimentScore !== 'number' || isNaN(sentimentScore)) {
+                console.error(`[C++ Service] ⚠️ Invalid sentiment score:`, sentimentScore);
+                throw new Error('Invalid sentiment score from C++ service');
+            }
+            if (typeof wordCount !== 'number' || wordCount < 0) {
+                console.error(`[C++ Service] ⚠️ Invalid word count:`, wordCount);
+                throw new Error('Invalid word count from C++ service');
+            }
+            // Log detailed analysis results
+            console.log(`[C++ Service] 📈 Analysis results:`, {
                 wordCount: response.data.wordCount,
                 keywordCount: response.data.keywordCount,
                 sentimentScore: response.data.sentimentScore,
                 readingTime: response.data.readingTime,
-                keywords: response.data.keywords
+                keywords: response.data.keywords,
+                responseTime: responseTime
             });
             return {
                 result: response.data,
@@ -78,7 +100,8 @@ class EnhancedAnalysisService {
                 statusText: error?.response?.statusText,
                 responseData: error?.response?.data,
                 timeout: errorTime,
-                cppServiceUrl: this.cppServiceUrl
+                cppServiceUrl: this.cppServiceUrl,
+                requestText: text.substring(0, 200) + (text.length > 200 ? '...' : '')
             };
             console.error(`[C++ Service] ❌ Failed after ${errorTime}ms - Error details:`, errorDetails);
             // Additional diagnostics
@@ -90,10 +113,16 @@ class EnhancedAnalysisService {
             }
             else if (error?.response?.status) {
                 console.error(`[C++ Service] 📡 HTTP ${error?.response?.status}: ${error?.response?.statusText}`);
+                console.error(`[C++ Service] 📄 Response body:`, error?.response?.data);
+            }
+            else if (error instanceof Error) {
+                console.error(`[C++ Service] 🚨 Service error:`, error.message);
             }
             // Return fallback analysis with availability flag
+            const fallbackResult = this.performCppFallbackAnalysis(text);
+            console.log(`[C++ Service] 🔄 Using fallback analysis:`, fallbackResult);
             return {
-                result: this.performCppFallbackAnalysis(text),
+                result: fallbackResult,
                 time: errorTime,
                 available: false
             };
