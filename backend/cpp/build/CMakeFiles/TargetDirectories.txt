@@ -1,4 +1,0 @@
-/Users/sudhirsinghal/Documents/post-analyzer-app/backend/cpp/build/CMakeFiles/post_analyzer.dir
-/Users/sudhirsinghal/Documents/post-analyzer-app/backend/cpp/build/CMakeFiles/analyzer_test.dir
-/Users/sudhirsinghal/Documents/post-analyzer-app/backend/cpp/build/CMakeFiles/edit_cache.dir
-/Users/sudhirsinghal/Documents/post-analyzer-app/backend/cpp/build/CMakeFiles/rebuild_cache.dir

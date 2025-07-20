@@ -205,12 +205,12 @@ export class EnhancedAnalysisService {
           attempts: attempt
         });
         
-        return {
-          result: response.data,
+      return {
+        result: response.data,
           time: responseTime,
           available: true
-        };
-      } catch (error) {
+      };
+    } catch (error) {
         lastError = error;
         const errorTime = Date.now() - startTime;
         

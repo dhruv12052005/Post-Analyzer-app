@@ -43,14 +43,24 @@ private:
         {"good", 1.0}, {"great", 1.5}, {"excellent", 2.0}, {"amazing", 2.0}, {"wonderful", 1.8},
         {"love", 1.5}, {"like", 1.0}, {"enjoy", 1.2}, {"happy", 1.3}, {"beautiful", 1.4},
         {"perfect", 2.0}, {"fantastic", 1.8}, {"brilliant", 1.7}, {"outstanding", 1.6},
-        {"cool", 1.2}, {"positive", 1.5}, {"awesome", 1.8}, {"superb", 1.7}, {"terrific", 1.6},
-        {"delightful", 1.4}, {"pleased", 1.3}, {"satisfied", 1.2}, {"thrilled", 1.6}, {"excited", 1.4}
+        {"lovely", 1.4}, {"nice", 1.0}, {"awesome", 1.8}, {"incredible", 1.9}, {"superb", 1.7},
+        {"delightful", 1.6}, {"pleased", 1.2}, {"satisfied", 1.1}, {"content", 1.0}, {"joyful", 1.4},
+        {"excited", 1.3}, {"thrilled", 1.5}, {"grateful", 1.2}, {"blessed", 1.3}, {"fortunate", 1.1},
+        {"successful", 1.2}, {"achieved", 1.1}, {"accomplished", 1.2}, {"proud", 1.3}, {"confident", 1.1},
+        {"optimistic", 1.2}, {"hopeful", 1.1}, {"inspired", 1.3}, {"motivated", 1.2}, {"energetic", 1.1},
+        {"refreshed", 1.1}, {"relaxed", 1.0}, {"peaceful", 1.1}, {"calm", 1.0}, {"serene", 1.2}
     };
 
     std::map<std::string, double> negativeWords = {
         {"bad", -1.0}, {"terrible", -2.0}, {"awful", -2.0}, {"hate", -1.5}, {"dislike", -1.0},
         {"horrible", -2.0}, {"worst", -2.0}, {"disappointing", -1.5}, {"frustrated", -1.2},
-        {"angry", -1.3}, {"sad", -1.1}, {"upset", -1.2}, {"annoying", -1.1}, {"boring", -1.0}
+        {"angry", -1.3}, {"sad", -1.1}, {"upset", -1.2}, {"annoying", -1.1}, {"boring", -1.0},
+        {"ugly", -1.2}, {"awful", -1.8}, {"dreadful", -1.7}, {"miserable", -1.5}, {"depressed", -1.4},
+        {"anxious", -1.2}, {"worried", -1.1}, {"scared", -1.3}, {"fearful", -1.2}, {"nervous", -1.1},
+        {"stressed", -1.2}, {"tired", -0.8}, {"exhausted", -1.1}, {"overwhelmed", -1.3}, {"confused", -0.9},
+        {"disgusted", -1.4}, {"offended", -1.3}, {"insulted", -1.4}, {"betrayed", -1.6}, {"abandoned", -1.5},
+        {"lonely", -1.2}, {"isolated", -1.3}, {"rejected", -1.4}, {"ignored", -1.2}, {"forgotten", -1.1},
+        {"useless", -1.3}, {"worthless", -1.4}, {"hopeless", -1.5}, {"helpless", -1.2}, {"powerless", -1.1}
     };
 
 public:
@@ -110,18 +120,24 @@ public:
     double calculateSentiment(const std::vector<std::string>& tokens) {
         double totalScore = 0.0;
         int wordCount = 0;
+        std::vector<std::string> foundPositiveWords;
+        std::vector<std::string> foundNegativeWords;
 
         for (const auto& token : tokens) {
             double score = 0.0;
             
+            // Check positive words
             auto posIt = positiveWords.find(token);
             if (posIt != positiveWords.end()) {
                 score += posIt->second;
+                foundPositiveWords.push_back(token);
             }
             
+            // Check negative words
             auto negIt = negativeWords.find(token);
             if (negIt != negativeWords.end()) {
                 score += negIt->second;
+                foundNegativeWords.push_back(token);
             }
             
             if (score != 0.0) {
@@ -130,7 +146,29 @@ public:
             }
         }
 
-        return wordCount > 0 ? totalScore / wordCount : 0.0;
+        // Log sentiment analysis details
+        if (!foundPositiveWords.empty() || !foundNegativeWords.empty()) {
+            std::string positiveStr = foundPositiveWords.empty() ? "none" : "";
+            for (size_t i = 0; i < foundPositiveWords.size(); ++i) {
+                if (i > 0) positiveStr += ", ";
+                positiveStr += foundPositiveWords[i];
+            }
+            
+            std::string negativeStr = foundNegativeWords.empty() ? "none" : "";
+            for (size_t i = 0; i < foundNegativeWords.size(); ++i) {
+                if (i > 0) negativeStr += ", ";
+                negativeStr += foundNegativeWords[i];
+            }
+            
+            logMessage("DEBUG", "Sentiment analysis - Positive words: [" + positiveStr + "], Negative words: [" + negativeStr + "], Total score: " + std::to_string(totalScore) + ", Word count: " + std::to_string(wordCount));
+        } else {
+            logMessage("DEBUG", "Sentiment analysis - No sentiment words found in tokens");
+        }
+
+        double finalScore = wordCount > 0 ? totalScore / wordCount : 0.0;
+        logMessage("DEBUG", "Final sentiment score: " + std::to_string(finalScore));
+        
+        return finalScore;
     }
 
     AnalysisResult analyze(const std::string& text) {
@@ -257,6 +295,7 @@ private:
         
         if (bytesRead <= 0) {
             logMessage("WARN", "No data received from " + clientIP + ", closing connection");
+            logMessage("DEBUG", "Bytes read: " + std::to_string(bytesRead) + ", errno: " + std::to_string(errno));
             close(clientSocket);
             return;
         }
@@ -265,6 +304,7 @@ private:
         std::string request(buffer);
         
         logMessage("DEBUG", "Received request from " + clientIP + " (" + std::to_string(bytesRead) + " bytes)");
+        logMessage("DEBUG", "Raw request (first 200 chars): " + request.substr(0, std::min(200UL, request.length())));
 
         std::string response;
         std::string contentType = "application/json";
@@ -350,6 +390,7 @@ private:
                 } else {
                     logMessage("ERROR", "Missing text field in request from " + clientIP);
                     logMessage("ERROR", "Failed to parse JSON body: " + body);
+                    logMessage("ERROR", "Request headers: " + request.substr(0, request.find("\r\n\r\n")));
                     response = "HTTP/1.1 400 Bad Request\r\n";
                     response += "Content-Type: " + contentType + "\r\n";
                     response += "\r\n";
@@ -358,6 +399,7 @@ private:
             } else {
                 logMessage("ERROR", "Invalid request body from " + clientIP);
                 logMessage("ERROR", "No body separator found in request");
+                logMessage("ERROR", "Full request: " + request);
                 response = "HTTP/1.1 400 Bad Request\r\n";
                 response += "Content-Type: " + contentType + "\r\n";
                 response += "\r\n";
